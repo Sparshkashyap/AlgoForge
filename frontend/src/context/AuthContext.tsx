@@ -1,110 +1,77 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { loginApi, logoutApi, meApi, signupApi } from "../api/auth.api";
+import React, { createContext, useContext, useEffect, useState } from "react";
+import {
+  getMe,
+  loginUser,
+  logoutUser,
+  signupUser,
+} from "@/services/auth.service";
 
-type User = {
+interface User {
   id: string;
   name: string;
   email: string;
-  role: "USER" | "ADMIN";
-  plan: "FREE" | "PRO";
-  streak: number;
-};
+  role: string;
+}
 
-type AuthContextType = {
+interface AuthContextType {
   user: User | null;
-  token: string | null;
   loading: boolean;
-  isAuthenticated: boolean;
-  signup: (payload: { name: string; email: string; password: string }) => Promise<void>;
-  login: (payload: { email: string; password: string }) => Promise<void>;
+  signup: (data: { name: string; email: string; password: string }) => Promise<any>;
+  login: (data: { email: string; password: string }) => Promise<any>;
   logout: () => Promise<void>;
-};
+}
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [token, setToken] = useState<string | null>(localStorage.getItem("algoforge_token"));
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const persistAuth = (nextToken: string | null, nextUser: User | null) => {
-    if (nextToken) {
-      localStorage.setItem("algoforge_token", nextToken);
-    } else {
-      localStorage.removeItem("algoforge_token");
-    }
-
-    setToken(nextToken);
-    setUser(nextUser);
-  };
-
-  const fetchMe = async () => {
+  const loadUser = async () => {
     try {
-      const existingToken = localStorage.getItem("algoforge_token");
-      if (!existingToken) {
-        setLoading(false);
-        return;
-      }
-
-      const response = await meApi();
-      setUser(response.data.data);
+      const data = await getMe();
+      setUser(data.user);
     } catch {
-      persistAuth(null, null);
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchMe();
+    loadUser();
   }, []);
 
-  const signup = async (payload: { name: string; email: string; password: string }) => {
-    const response = await signupApi(payload);
-    const newToken = response.data.data.token;
-    const newUser = response.data.data.user;
-    persistAuth(newToken, newUser);
+  const signup = async (formData: {
+    name: string;
+    email: string;
+    password: string;
+  }) => {
+    const data = await signupUser(formData);
+    setUser(data.user);
+    return data;
   };
 
-  const login = async (payload: { email: string; password: string }) => {
-    const response = await loginApi(payload);
-    const newToken = response.data.data.token;
-    const newUser = response.data.data.user;
-    persistAuth(newToken, newUser);
+  const login = async (formData: { email: string; password: string }) => {
+    const data = await loginUser(formData);
+    setUser(data.user);
+    return data;
   };
 
   const logout = async () => {
-    try {
-      await logoutApi();
-    } catch {
-      // ignore
-    } finally {
-      persistAuth(null, null);
-    }
+    await logoutUser();
+    setUser(null);
   };
 
-  const value = useMemo(
-    () => ({
-      user,
-      token,
-      loading,
-      isAuthenticated: !!token && !!user,
-      signup,
-      login,
-      logout
-    }),
-    [user, token, loading]
+  return (
+    <AuthContext.Provider value={{ user, loading, signup, login, logout }}>
+      {children}
+    </AuthContext.Provider>
   );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const value = useContext(AuthContext);
-
-  if (!value) {
-    throw new Error("useAuth must be used inside AuthProvider");
-  }
-
-  return value;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
+  return ctx;
 };

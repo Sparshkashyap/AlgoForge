@@ -5,14 +5,14 @@ let aiClient = null;
 
 if (env.GEMINI_API_KEY) {
   aiClient = new GoogleGenAI({
-    apiKey: env.GEMINI_API_KEY
+    apiKey: env.GEMINI_API_KEY,
   });
 }
 
 export const generateHintService = async ({ title, description, code }) => {
   if (!aiClient) {
     return {
-      hint: "AI is not configured yet. Add GEMINI_API_KEY in backend .env."
+      hint: "AI is not configured yet. Add GEMINI_API_KEY in backend .env.",
     };
   }
 
@@ -29,10 +29,10 @@ ${code || "No code provided"}
 
   const response = await aiClient.models.generateContent({
     model: env.GEMINI_MODEL,
-    contents: prompt
+    contents: prompt,
   });
 
   return {
-    hint: response.text
+    hint: response.text,
   };
 };

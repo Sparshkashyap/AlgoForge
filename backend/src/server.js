@@ -1,85 +1,19 @@
-import dotenv from "dotenv";
-dotenv.config();
-
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import cookieParser from "cookie-parser";
-import rateLimit from "express-rate-limit";
-
+import app from "./app.js";
 import env from "./config/env.js";
 import prisma from "./config/db.js";
 
-import authRoutes from "./routes/auth.routes.js";
-import problemRoutes from "./routes/problem.routes.js";
-import submissionRoutes from "./routes/submission.routes.js";
-import userRoutes from "./routes/user.routes.js";
-import aiRoutes from "./routes/ai.routes.js";
-import billingRoutes from "./routes/billing.routes.js";
-
-import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
-import { errorMiddleware } from "./middleware/error.middleware.js";
-
-const app = express();
-
-app.set("trust proxy", 1);
-
-app.use(
-  cors({
-    origin: env.CLIENT_URL,
-    credentials: true
-  })
-);
-
-// console.log("DATABASE_URL:", process.env.DATABASE_URL)
-// console.log("DIRECT_URL:", process.env.DIRECT_URL)
-
-app.use(helmet());
-app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
-app.use(cookieParser());
-app.use(express.json({ limit: "2mb" }));
-app.use(express.urlencoded({ extended: true }));
-
-app.use(
-  rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 300,
-    standardHeaders: true,
-    legacyHeaders: false
-  })
-);
-
-app.get("/health", async (req, res, next) => {
+const startServer = async () => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
-    res.status(200).json({
-      ok: true,
-      message: "AlgoForge API healthy",
-      env: env.NODE_ENV
+    await prisma.$connect();
+    console.log("PostgreSQL connected");
+
+    app.listen(env.PORT, () => {
+      console.log(`Server running on port ${env.PORT}`);
     });
   } catch (error) {
-    next(error);
+    console.error("Server start error:", error);
+    process.exit(1);
   }
-});
+};
 
-app.use("/api/auth", authRoutes);
-app.use("/api/problems", problemRoutes);
-app.use("/api/submissions", submissionRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/billing", billingRoutes);
-
-app.get("/", (req, res) => {
-  res.status(200).json({
-    ok: true,
-    message: "AlgoForge API running"
-  });
-});
-
-app.use(notFoundMiddleware);
-app.use(errorMiddleware);
-
-app.listen(env.PORT, () => {
-  console.log(`Server running on http://localhost:${env.PORT}`);
-});
+startServer();
