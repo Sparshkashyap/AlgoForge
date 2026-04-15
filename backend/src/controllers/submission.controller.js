@@ -1,20 +1,20 @@
 import {
   createSubmissionService,
-  listMySubmissionsService
+  listMySubmissionsService,
 } from "../services/submission.service.js";
-import { successResponse } from "../utils/response.js";
 
 export const createSubmissionController = async (req, res, next) => {
   try {
-    const { problemId, language, code } = req.validated.body;
     const submission = await createSubmissionService({
-      userId: req.user.id,
-      problemId,
-      language,
-      code
+      ...req.validated.body,
+      userId: req.user.userId,
     });
 
-    return successResponse(res, submission, "Submission created", 201);
+    return res.status(201).json({
+      success: true,
+      message: "Submission evaluated successfully",
+      data: submission,
+    });
   } catch (error) {
     next(error);
   }
@@ -22,8 +22,12 @@ export const createSubmissionController = async (req, res, next) => {
 
 export const listMySubmissionsController = async (req, res, next) => {
   try {
-    const submissions = await listMySubmissionsService(req.user.id);
-    return successResponse(res, submissions, "Submissions fetched");
+    const submissions = await listMySubmissionsService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: submissions,
+    });
   } catch (error) {
     next(error);
   }

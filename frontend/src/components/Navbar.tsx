@@ -1,96 +1,209 @@
-import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import {
+  Code2,
+  LayoutDashboard,
+  LogIn,
+  Menu,
+  PlusSquare,
+  Sparkles,
+  UserPlus,
+  ListChecks,
+} from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Code2, Menu, X } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ModeToggle } from "@/components/ModeToggle";
+import { UserNav } from "@/components/UserNav";
 
-const navLinks = [
+const publicLinks = [
+  { label: "Home", href: "/" },
   { label: "Problems", href: "/problems" },
-  { label: "Contests", href: "/contests" },
-  { label: "Leaderboard", href: "/leaderboard" },
-  { label: "Roadmap", href: "/roadmap" },
-  { label: "Pricing", href: "/pricing" },
 ];
 
 export function Navbar() {
-  const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated } = useAuth();
+
+  const privateLinks = [
+    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { label: "Problems", href: "/problems", icon: Sparkles },
+    ...(user?.role === "ADMIN"
+      ? [
+          { label: "Create Problem", href: "/create-problem", icon: PlusSquare },
+          { label: "Manage Problems", href: "/manage-problems", icon: ListChecks },
+        ]
+      : []),
+  ];
+
+  const links = isAuthenticated ? privateLinks : publicLinks;
 
   return (
-    <header className="sticky top-0 z-50 glass-strong">
-      <div className="container flex h-16 items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+      <div className="container flex h-16 items-center justify-between gap-4">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary shadow-sm">
             <Code2 className="h-4 w-4 text-primary-foreground" />
           </div>
-          <span className="font-heading text-lg font-bold tracking-tight">AlgoForge</span>
+          <div className="flex flex-col leading-none">
+            <span className="font-heading text-lg font-bold tracking-tight">
+              AlgoForge
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              AI Coding Platform
+            </span>
+          </div>
         </Link>
 
         <nav className="hidden md:flex items-center gap-1">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              to={link.href}
-              className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-                location.pathname === link.href
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              }`}
-            >
-              {link.label}
-            </Link>
-          ))}
+          {links.map((link) => {
+            const active = location.pathname === link.href;
+
+            return (
+              <Link
+                key={link.href}
+                to={link.href}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/login">
-            <Button variant="ghost" size="sm">Log in</Button>
-          </Link>
-          <Link to="/signup">
-            <Button size="sm" className="gradient-primary text-primary-foreground border-0">
-              Get Started
-            </Button>
-          </Link>
+          <ModeToggle />
+
+          {isAuthenticated && user ? (
+            <>
+              <Link to="/dashboard">
+                <Button variant="ghost" className="rounded-full">
+                  {user.name.split(" ")[0]}
+                </Button>
+              </Link>
+              <UserNav />
+            </>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="ghost" className="rounded-full">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Log in
+                </Button>
+              </Link>
+              <Link to="/signup">
+                <Button className="rounded-full gradient-primary text-primary-foreground border-0">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Get Started
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
 
-        <button className="md:hidden" onClick={() => setMobileOpen(!mobileOpen)}>
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
+        <div className="md:hidden flex items-center gap-2">
+          <ModeToggle />
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            className="md:hidden border-t border-border overflow-hidden"
-          >
-            <div className="container py-4 flex flex-col gap-2">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className="px-3 py-2 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="flex gap-2 pt-2 border-t border-border mt-2">
-                <Link to="/login" className="flex-1">
-                  <Button variant="ghost" size="sm" className="w-full">Log in</Button>
-                </Link>
-                <Link to="/signup" className="flex-1">
-                  <Button size="sm" className="w-full gradient-primary text-primary-foreground border-0">
-                    Get Started
-                  </Button>
-                </Link>
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="rounded-full">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+
+            <SheetContent side="right" className="w-[320px] p-0">
+              <div className="border-b border-border px-6 py-5">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
+                    <Code2 className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div>
+                    <p className="font-heading text-lg font-bold">AlgoForge</p>
+                    <p className="text-xs text-muted-foreground">
+                      Practice with precision
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <div className="px-4 py-4">
+                <div className="flex flex-col gap-2">
+                  {links.map((link) => (
+                    <Link
+                      key={link.href}
+                      to={link.href}
+                      className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
+                        location.pathname === link.href
+                          ? "bg-primary/10 text-primary"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      }`}
+                    >
+                      {link.label}
+                    </Link>
+                  ))}
+                </div>
+
+                <div className="mt-6 border-t border-border pt-4">
+                  {isAuthenticated && user ? (
+                    <div className="rounded-2xl border border-border bg-card p-4">
+                      <p className="font-semibold">{user.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {user.email}
+                      </p>
+
+                      <div className="mt-4 flex flex-col gap-2">
+                        <Link to="/dashboard">
+                          <Button className="w-full rounded-xl">
+                            Go to Dashboard
+                          </Button>
+                        </Link>
+
+                        {user.role === "ADMIN" ? (
+                          <>
+                            <Link to="/create-problem">
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-xl"
+                              >
+                                Create Problem
+                              </Button>
+                            </Link>
+
+                            <Link to="/manage-problems">
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-xl"
+                              >
+                                Manage Problems
+                              </Button>
+                            </Link>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Link to="/login">
+                        <Button variant="outline" className="w-full rounded-xl">
+                          Log in
+                        </Button>
+                      </Link>
+                      <Link to="/signup">
+                        <Button className="w-full rounded-xl gradient-primary text-primary-foreground border-0">
+                          Create account
+                        </Button>
+                      </Link>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
+      </div>
     </header>
   );
 }

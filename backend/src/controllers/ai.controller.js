@@ -1,17 +1,29 @@
-import { generateHintService } from "../services/ai.service.js";
-import { successResponse } from "../utils/response.js";
+import {
+  generateHintService,
+  generateProblemCodePackService,
+} from "../services/ai.service.js";
 
-export const hintController = async (req, res, next) => {
+export const generateHintController = async (req, res, next) => {
   try {
-    const { title, description, code } = req.body;
+    const result = await generateHintService(req.body);
 
-    const result = await generateHintService({
-      title,
-      description,
-      code
+    return res.status(200).json({
+      success: true,
+      data: result,
     });
+  } catch (error) {
+    next(error);
+  }
+};
 
-    return successResponse(res, result, "AI hint generated");
+export const generateProblemCodePackController = async (req, res, next) => {
+  try {
+    const result = await generateProblemCodePackService(req.body);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

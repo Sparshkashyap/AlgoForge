@@ -1,14 +1,78 @@
 import {
-  listProblemsService,
+  createProblemService,
+  deleteProblemService,
+  getProblemByIdForAdminService,
   getProblemBySlugService,
-  createProblemService
+  listAdminProblemsService,
+  listPublishedProblemsService,
+  previewProblemRunService,
+  updateProblemService,
 } from "../services/problem.service.js";
-import { successResponse } from "../utils/response.js";
 
-export const listProblemsController = async (req, res, next) => {
+export const createProblemController = async (req, res, next) => {
   try {
-    const problems = await listProblemsService();
-    return successResponse(res, problems, "Problems fetched");
+    const problem = await createProblemService(req.validated.body, req.user.userId);
+
+    return res.status(201).json({
+      success: true,
+      message: "Problem created successfully",
+      data: problem,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateProblemController = async (req, res, next) => {
+  try {
+    const problem = await updateProblemService(
+      req.params.problemId,
+      req.validated.body,
+      req.user.userId
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Problem updated successfully",
+      data: problem,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const deleteProblemController = async (req, res, next) => {
+  try {
+    const result = await deleteProblemService(req.params.problemId);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const previewProblemRunController = async (req, res, next) => {
+  try {
+    const result = await previewProblemRunService(req.validated.body);
+
+    return res.status(200).json({
+      success: true,
+      message: "Preview run completed",
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listPublishedProblemsController = async (req, res, next) => {
+  try {
+    const problems = await listPublishedProblemsService();
+
+    return res.status(200).json({
+      success: true,
+      data: problems,
+    });
   } catch (error) {
     next(error);
   }
@@ -16,17 +80,38 @@ export const listProblemsController = async (req, res, next) => {
 
 export const getProblemBySlugController = async (req, res, next) => {
   try {
-    const problem = await getProblemBySlugService(req.params.slug);
-    return successResponse(res, problem, "Problem fetched");
+    const problem = await getProblemBySlugService(req.params.slug, req.user || null);
+
+    return res.status(200).json({
+      success: true,
+      data: problem,
+    });
   } catch (error) {
     next(error);
   }
 };
 
-export const createProblemController = async (req, res, next) => {
+export const getProblemByIdForAdminController = async (req, res, next) => {
   try {
-    const problem = await createProblemService(req.validated.body);
-    return successResponse(res, problem, "Problem created", 201);
+    const problem = await getProblemByIdForAdminService(req.params.problemId);
+
+    return res.status(200).json({
+      success: true,
+      data: problem,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listAdminProblemsController = async (req, res, next) => {
+  try {
+    const problems = await listAdminProblemsService();
+
+    return res.status(200).json({
+      success: true,
+      data: problems,
+    });
   } catch (error) {
     next(error);
   }

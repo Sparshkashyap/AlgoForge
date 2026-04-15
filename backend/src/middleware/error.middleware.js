@@ -1,17 +1,17 @@
-import { ZodError } from "zod";
+export const errorMiddleware = (error, req, res, next) => {
+  console.error("ERROR:", error);
 
-export const errorMiddleware = (err, req, res, next) => {
-  console.error("ERROR:", err);
-
-  if (err instanceof ZodError) {
-    return res.status(400).json({
-      success: false,
-      message: err.issues[0]?.message || "Validation error",
-    });
+  if (res.headersSent) {
+    return next(error);
   }
 
-  return res.status(500).json({
+  const statusCode = error.statusCode || 500;
+  const message =
+    error.message || "Something went wrong on the server";
+
+  return res.status(statusCode).json({
     success: false,
-    message: err.message || "Internal Server Error",
+    message,
+    ...(process.env.NODE_ENV !== "production" && { stack: error.stack }),
   });
 };

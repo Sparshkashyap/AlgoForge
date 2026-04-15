@@ -1,9 +1,15 @@
 import API from "./axios";
 
-export const createSubmissionApi = (payload: {
+export const createSubmissionApi = async (payload: {
   problemId: string;
-  language: string;
+  language: "javascript" | "python" | "cpp" | "java" | "c";
   code: string;
-}) => API.post("/submissions", payload);
+}) => {
+  const response = await API.post("/submissions", payload);
+  return response.data;
+};
 
-export const getMySubmissionsApi = () => API.get("/submissions/me");
+export const getMySubmissionsApi = async () => {
+  const response = await API.get("/submissions/me");
+  return response.data;
+};

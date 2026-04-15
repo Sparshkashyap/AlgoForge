@@ -1,51 +1,39 @@
 import { Link } from "react-router-dom";
-import { Code2 } from "lucide-react";
-
-const footerLinks = {
-  Product: ["Problems", "Contests", "Leaderboard", "AI Assistant", "Roadmap"],
-  Company: ["About", "Careers", "Blog", "Press"],
-  Resources: ["Documentation", "Community", "Support", "Status"],
-  Legal: ["Privacy", "Terms", "Security"],
-};
+import { Code2, Heart } from "lucide-react";
 
 export function Footer() {
   return (
-    <footer className="border-t border-border bg-card/50">
-      <div className="container py-16">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-          <div className="col-span-2 md:col-span-1">
-            <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="h-8 w-8 rounded-lg gradient-primary flex items-center justify-center">
-                <Code2 className="h-4 w-4 text-primary-foreground" />
-              </div>
-              <span className="font-heading text-lg font-bold">AlgoForge</span>
-            </Link>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Practice Smarter. Build Faster. Crack Better.
+    <footer className="border-t border-border/60 bg-background/80">
+      <div className="container flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
+            <Code2 className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <p className="font-heading text-lg font-bold">AlgoForge</p>
+            <p className="text-sm text-muted-foreground">
+              Build stronger problem-solving skills.
             </p>
           </div>
-          {Object.entries(footerLinks).map(([title, links]) => (
-            <div key={title}>
-              <h4 className="font-heading font-semibold text-sm mb-4">{title}</h4>
-              <ul className="space-y-2.5">
-                {links.map((link) => (
-                  <li key={link}>
-                    <a href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                      {link}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
         </div>
-        <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-xs text-muted-foreground">© 2026 AlgoForge. All rights reserved.</p>
-          <div className="flex items-center gap-4">
-            <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Twitter</a>
-            <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">GitHub</a>
-            <a href="#" className="text-xs text-muted-foreground hover:text-foreground transition-colors">Discord</a>
-          </div>
+
+        <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
+          <Link to="/" className="hover:text-foreground transition-colors">
+            Home
+          </Link>
+          <Link to="/problems" className="hover:text-foreground transition-colors">
+            Problems
+          </Link>
+          <Link to="/login" className="hover:text-foreground transition-colors">
+            Login
+          </Link>
+          <Link to="/signup" className="hover:text-foreground transition-colors">
+            Signup
+          </Link>
+        </div>
+
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          Crafted with <Heart className="h-4 w-4 text-red-500" /> for serious prep
         </div>
       </div>
     </footer>

@@ -9,13 +9,7 @@ import { createSubmissionSchema } from "../validations/submission.validation.js"
 
 const router = express.Router();
 
-router.post(
-  "/",
-  authMiddleware,
-  validate(createSubmissionSchema),
-  createSubmissionController
-);
-
+router.post("/", authMiddleware, validate(createSubmissionSchema), createSubmissionController);
 router.get("/me", authMiddleware, listMySubmissionsController);
 
 export default router;

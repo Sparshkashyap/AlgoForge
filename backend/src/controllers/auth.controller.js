@@ -1,20 +1,20 @@
 import bcrypt from "bcryptjs";
-import  prisma  from "../config/db.js";
+import prisma from "../config/db.js";
 import { signToken } from "../utils/jwt.js";
 import { clearAuthCookie, setAuthCookie } from "../utils/cookies.js";
-import { loginSchema, signupSchema } from "../validations/auth.validation.js";
 
 export const signup = async (req, res, next) => {
   try {
-    const parsed = signupSchema.parse(req.body);
-    const { name, email, password } = parsed;
+    const { name, email, password } = req.validated.body;
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: "User already exists",
       });
@@ -24,16 +24,17 @@ export const signup = async (req, res, next) => {
 
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: name.trim(),
+        email: normalizedEmail,
         password: hashedPassword,
+        provider: "LOCAL",
       },
     });
 
     const token = signToken({
       userId: user.id,
-      role: user.role,
       email: user.email,
+      role: user.role,
     });
 
     setAuthCookie(res, token);
@@ -46,8 +47,13 @@ export const signup = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatarUrl: user.avatarUrl,
+        plan: user.plan,
+        solvedCount: user.solvedCount,
+        streak: user.streak,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
-      token
     });
   } catch (error) {
     next(error);
@@ -56,11 +62,12 @@ export const signup = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const parsed = loginSchema.parse(req.body);
-    const { email, password } = parsed;
+    const { email, password } = req.validated.body;
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user || !user.password) {
@@ -81,13 +88,13 @@ export const login = async (req, res, next) => {
 
     const token = signToken({
       userId: user.id,
-      role: user.role,
       email: user.email,
+      role: user.role,
     });
 
     setAuthCookie(res, token);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Login successful",
       user: {
@@ -95,8 +102,13 @@ export const login = async (req, res, next) => {
         name: user.name,
         email: user.email,
         role: user.role,
+        avatarUrl: user.avatarUrl,
+        plan: user.plan,
+        solvedCount: user.solvedCount,
+        streak: user.streak,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
       },
-      token
     });
   } catch (error) {
     next(error);
@@ -105,6 +117,13 @@ export const login = async (req, res, next) => {
 
 export const me = async (req, res, next) => {
   try {
+    if (!req.user?.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: req.user.userId },
       select: {
@@ -116,10 +135,19 @@ export const me = async (req, res, next) => {
         plan: true,
         solvedCount: true,
         streak: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
-    return res.json({
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
       success: true,
       user,
     });
@@ -132,7 +160,7 @@ export const logout = async (req, res, next) => {
   try {
     clearAuthCookie(res);
 
-    return res.json({
+    return res.status(200).json({
       success: true,
       message: "Logged out successfully",
     });

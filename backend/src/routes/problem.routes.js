@@ -1,16 +1,58 @@
 import express from "express";
 import {
-  listProblemsController,
+  createProblemController,
+  deleteProblemController,
+  getProblemByIdForAdminController,
   getProblemBySlugController,
-  createProblemController
+  listAdminProblemsController,
+  listPublishedProblemsController,
+  previewProblemRunController,
+  updateProblemController,
 } from "../controllers/problem.controller.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
+import { adminMiddleware } from "../middleware/admin.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
-import { createProblemSchema } from "../validations/problem.validation.js";
+import {
+  createProblemSchema,
+  previewProblemRunSchema,
+} from "../validations/problem.validation.js";
 
 const router = express.Router();
 
-router.get("/", listProblemsController);
+router.get("/", listPublishedProblemsController);
+router.get("/admin/all/list", authMiddleware, adminMiddleware, listAdminProblemsController);
+router.get("/admin/:problemId", authMiddleware, adminMiddleware, getProblemByIdForAdminController);
 router.get("/:slug", getProblemBySlugController);
-router.post("/", validate(createProblemSchema), createProblemController);
+
+router.post(
+  "/preview-run",
+  authMiddleware,
+  adminMiddleware,
+  validate(previewProblemRunSchema),
+  previewProblemRunController
+);
+
+router.post(
+  "/",
+  authMiddleware,
+  adminMiddleware,
+  validate(createProblemSchema),
+  createProblemController
+);
+
+router.put(
+  "/:problemId",
+  authMiddleware,
+  adminMiddleware,
+  validate(createProblemSchema),
+  updateProblemController
+);
+
+router.delete(
+  "/:problemId",
+  authMiddleware,
+  adminMiddleware,
+  deleteProblemController
+);
 
 export default router;

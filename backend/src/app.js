@@ -11,9 +11,7 @@ import prisma from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import problemRoutes from "./routes/problem.routes.js";
 import submissionRoutes from "./routes/submission.routes.js";
-import userRoutes from "./routes/user.routes.js";
-import aiRoutes from "./routes/ai.routes.js";
-import billingRoutes from "./routes/billing.routes.js";
+import executionRoutes from "./routes/execution.routes.js";
 
 import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
@@ -44,12 +42,19 @@ app.use(
   })
 );
 
+app.get("/", (req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "AlgoForge API running",
+  });
+});
+
 app.get("/health", async (req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
 
     return res.status(200).json({
-      ok: true,
+      success: true,
       message: "AlgoForge API healthy",
       env: env.NODE_ENV,
     });
@@ -58,19 +63,10 @@ app.get("/health", async (req, res, next) => {
   }
 });
 
-app.get("/", (req, res) => {
-  return res.status(200).json({
-    ok: true,
-    message: "AlgoForge API running",
-  });
-});
-
 app.use("/api/auth", authRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
-app.use("/api/users", userRoutes);
-app.use("/api/ai", aiRoutes);
-app.use("/api/billing", billingRoutes);
+app.use("/api/execution", executionRoutes);
 
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);

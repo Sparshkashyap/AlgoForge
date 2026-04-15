@@ -1,77 +1,95 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
 import {
-  getMe,
-  loginUser,
-  logoutUser,
-  signupUser,
-} from "@/services/auth.service";
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { loginApi, logoutApi, meApi, signupApi } from "@/api/auth.api";
+import type { LoginPayload, SignupPayload } from "@/types/auth.types";
+import type { User } from "@/types/user.types";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-interface AuthContextType {
+type AuthContextType = {
   user: User | null;
   loading: boolean;
-  signup: (data: { name: string; email: string; password: string }) => Promise<any>;
-  login: (data: { email: string; password: string }) => Promise<any>;
+  isAuthenticated: boolean;
+  signup: (payload: SignupPayload) => Promise<User>;
+  login: (payload: LoginPayload) => Promise<User>;
   logout: () => Promise<void>;
-}
+  refreshMe: () => Promise<void>;
+};
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const loadUser = async () => {
+  const refreshMe = useCallback(async () => {
     try {
-      const data = await getMe();
+      const data = await meApi();
       setUser(data.user);
     } catch {
       setUser(null);
-    } finally {
-      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadUser();
   }, []);
 
-  const signup = async (formData: {
-    name: string;
-    email: string;
-    password: string;
-  }) => {
-    const data = await signupUser(formData);
+  useEffect(() => {
+    const bootstrap = async () => {
+      try {
+        await refreshMe();
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void bootstrap();
+  }, [refreshMe]);
+
+  const signup = async (payload: SignupPayload) => {
+    const data = await signupApi(payload);
     setUser(data.user);
-    return data;
+    return data.user;
   };
 
-  const login = async (formData: { email: string; password: string }) => {
-    const data = await loginUser(formData);
+  const login = async (payload: LoginPayload) => {
+    const data = await loginApi(payload);
     setUser(data.user);
-    return data;
+    return data.user;
   };
 
   const logout = async () => {
-    await logoutUser();
-    setUser(null);
+    try {
+      await logoutApi();
+    } finally {
+      setUser(null);
+    }
   };
 
-  return (
-    <AuthContext.Provider value={{ user, loading, signup, login, logout }}>
-      {children}
-    </AuthContext.Provider>
+  const value = useMemo(
+    () => ({
+      user,
+      loading,
+      isAuthenticated: Boolean(user),
+      signup,
+      login,
+      logout,
+      refreshMe,
+    }),
+    [user, loading, refreshMe]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error("useAuth must be used inside AuthProvider");
-  return ctx;
+  const value = useContext(AuthContext);
+
+  if (!value) {
+    throw new Error("useAuth must be used inside AuthProvider");
+  }
+
+  return value;
 };

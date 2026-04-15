@@ -1,17 +1,29 @@
 import API from "./axios";
+import type {
+  AuthSuccessResponse,
+  LoginPayload,
+  SignupPayload,
+} from "@/types/auth.types";
+import type { User } from "@/types/user.types";
 
-export type SignupPayload = {
-  name: string;
-  email: string;
-  password: string;
+export const signupApi = async (payload: SignupPayload) => {
+  const response = await API.post<AuthSuccessResponse>("/auth/signup", payload);
+  return response.data;
 };
 
-export type LoginPayload = {
-  email: string;
-  password: string;
+export const loginApi = async (payload: LoginPayload) => {
+  const response = await API.post<AuthSuccessResponse>("/auth/login", payload);
+  return response.data;
 };
 
-export const signupApi = (payload: SignupPayload) => API.post("/auth/signup", payload);
-export const loginApi = (payload: LoginPayload) => API.post("/auth/login", payload);
-export const meApi = () => API.get("/auth/me");
-export const logoutApi = () => API.post("/auth/logout");
+export const meApi = async () => {
+  const response = await API.get<{ success: boolean; user: User }>("/auth/me");
+  return response.data;
+};
+
+export const logoutApi = async () => {
+  const response = await API.post<{ success: boolean; message: string }>(
+    "/auth/logout"
+  );
+  return response.data;
+};

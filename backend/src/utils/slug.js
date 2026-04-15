@@ -1,9 +1,9 @@
 import slugify from "slugify";
 
-export const makeSlug = (value) => {
-  return slugify(value, {
+export const generateProblemSlug = (title) => {
+  return slugify(title, {
     lower: true,
     strict: true,
-    trim: true
+    trim: true,
   });
 };

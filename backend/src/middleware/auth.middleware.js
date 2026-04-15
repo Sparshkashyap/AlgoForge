@@ -20,10 +20,17 @@ export const authMiddleware = async (req, res, next) => {
     const decoded = verifyToken(token);
 
     req.user = {
-      userId: decoded.userId,
+      userId: decoded.userId || decoded.id,
       email: decoded.email,
       role: decoded.role,
     };
+
+    if (!req.user.userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token payload",
+      });
+    }
 
     next();
   } catch (error) {
