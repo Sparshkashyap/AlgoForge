@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
@@ -21,6 +21,14 @@ const LANGUAGES: SupportedLanguage[] = [
   "c",
 ];
 
+const EMPTY_CODE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
+  javascript: "",
+  python: "",
+  cpp: "",
+  java: "",
+  c: "",
+};
+
 const getLanguageTemplate = (
   problem: Problem | null,
   language: SupportedLanguage
@@ -28,7 +36,6 @@ const getLanguageTemplate = (
   if (!problem) return "// Write your solution here";
 
   const template = problem.languageTemplates?.[language];
-
   if (template && template.trim()) {
     return template;
   }
@@ -48,22 +55,15 @@ export default function ProblemDetails() {
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
-  const [code, setCode] = useState("// Write your solution here");
-  const [codeByLanguage, setCodeByLanguage] = useState<
-    Record<SupportedLanguage, string>
-  >({
-    javascript: "",
-    python: "",
-    cpp: "",
-    java: "",
-    c: "",
-  });
+  const [codeByLanguage, setCodeByLanguage] =
+    useState<Record<SupportedLanguage, string>>(EMPTY_CODE_BY_LANGUAGE);
 
   const [runResult, setRunResult] = useState<Submission | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [previousSubmissions, setPreviousSubmissions] = useState<Submission[]>(
     []
   );
+
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -72,6 +72,17 @@ export default function ProblemDetails() {
   const [timerRunning, setTimerRunning] = useState(false);
 
   const blockedPremium = problem?.isPremium && !problem?.hasPremiumAccess;
+
+  const currentCode = useMemo(() => {
+    if (!problem) return "// Write your solution here";
+
+    const storedCode = codeByLanguage[language];
+    if (typeof storedCode === "string" && storedCode.length > 0) {
+      return storedCode;
+    }
+
+    return getLanguageTemplate(problem, language);
+  }, [codeByLanguage, language, problem]);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -90,7 +101,7 @@ export default function ProblemDetails() {
 
     getProblemBySlugApi(slug)
       .then((data) => {
-        const nextProblem = data.data;
+        const nextProblem = data.data as Problem;
         setProblem(nextProblem);
 
         const nextCodeByLanguage = LANGUAGES.reduce((acc, currentLanguage) => {
@@ -104,37 +115,14 @@ export default function ProblemDetails() {
         }, {} as Record<SupportedLanguage, string>);
 
         setCodeByLanguage(nextCodeByLanguage);
-        setCode(nextCodeByLanguage[language]);
       })
-      .catch((error) => {
-        toast.error(error?.response?.data?.message || "Failed to load problem");
+      .catch((error: any) => {
+        toast.error(
+          error?.response?.data?.message || "Failed to load problem"
+        );
       })
       .finally(() => setLoading(false));
   }, [slug]);
-
-  useEffect(() => {
-    if (!problem) return;
-
-    const nextCode =
-      codeByLanguage[language] || getLanguageTemplate(problem, language);
-
-    setCode(nextCode);
-  }, [language, codeByLanguage, problem]);
-
-  useEffect(() => {
-    if (!problem) return;
-
-    setCodeByLanguage((prev) => {
-      if (prev[language] === code) return prev;
-
-      return {
-        ...prev,
-        [language]: code,
-      };
-    });
-
-    localStorage.setItem(`algoforge:draft:${problem.id}:${language}`, code);
-  }, [code, language, problem]);
 
   useEffect(() => {
     if (!user) return;
@@ -156,11 +144,12 @@ export default function ProblemDetails() {
       setRunning(true);
 
       const visibleCase =
-        problem.testCases?.find((tc) => !tc.isHidden) || problem.testCases?.[0];
+        problem.testCases?.find((tc) => !tc.isHidden) ||
+        problem.testCases?.[0];
 
       const data = await runProblemApi(problem.id, {
         language,
-        code,
+        code: currentCode,
         input: visibleCase?.input || problem.sampleInput || "",
         expectedOutput: visibleCase?.expected || problem.sampleOutput || "",
       });
@@ -176,7 +165,7 @@ export default function ProblemDetails() {
         memory: data.data.memory,
         passedCount: data.data.passedCount,
         totalCount: data.data.totalCount,
-      });
+      } as Submission);
 
       toast.success(`Run: ${data.data.verdict || data.data.statusDescription}`);
     } catch (error: any) {
@@ -202,7 +191,7 @@ export default function ProblemDetails() {
       const data = await createSubmissionApi({
         problemId: problem.id,
         language,
-        code,
+        code: currentCode,
       });
 
       setSubmission(data.data);
@@ -229,29 +218,35 @@ export default function ProblemDetails() {
   };
 
   const handleLanguageChange = (nextLanguage: SupportedLanguage) => {
-    setCodeByLanguage((prev) => ({
-      ...prev,
-      [language]: code,
-    }));
-
     setLanguage(nextLanguage);
   };
 
   const handleCodeChange = (nextCode: string) => {
-    setCode(nextCode);
+    setCodeByLanguage((prev) => {
+      const updated = {
+        ...prev,
+        [language]: nextCode,
+      };
 
-    setCodeByLanguage((prev) => ({
-      ...prev,
-      [language]: nextCode,
-    }));
+      if (problem) {
+        localStorage.setItem(
+          `algoforge:draft:${problem.id}:${language}`,
+          nextCode
+        );
+      }
+
+      return updated;
+    });
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background text-foreground">
         <Navbar />
-        <div className="container py-10 text-muted-foreground">
-          Loading problem...
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading problem...
+          </div>
         </div>
       </div>
     );
@@ -259,47 +254,48 @@ export default function ProblemDetails() {
 
   if (!problem) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background text-foreground">
         <Navbar />
-        <div className="container py-10 text-muted-foreground">
-          Problem not found.
+        <div className="mx-auto max-w-7xl px-4 py-10">
+          <div className="rounded-2xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Problem not found.
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <div className="container py-8">
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
-        >
-          <ProblemWorkspace
-            problem={problem}
-            language={language}
-            setLanguage={handleLanguageChange}
-            code={code}
-            setCode={handleCodeChange}
-            running={running}
-            submitting={submitting}
-            blockedPremium={!!blockedPremium}
-            timerRunning={timerRunning}
-            timerSeconds={timerSeconds}
-            onTimerToggle={handleTimerToggle}
-            onTimerReset={handleTimerReset}
-            onRun={handleRun}
-            onSubmit={handleSubmit}
-            runResult={runResult}
-            submission={submission}
-            previousSubmissions={previousSubmissions}
-            userExists={!!user}
-          />
-        </motion.div>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25 }}
+        className="mx-auto max-w-7xl px-4 py-6"
+      >
+        <ProblemWorkspace
+          problem={problem}
+          language={language}
+          setLanguage={handleLanguageChange}
+          code={currentCode}
+          setCode={handleCodeChange}
+          running={running}
+          submitting={submitting}
+          blockedPremium={!!blockedPremium}
+          timerRunning={timerRunning}
+          timerSeconds={timerSeconds}
+          onTimerToggle={handleTimerToggle}
+          onTimerReset={handleTimerReset}
+          onRun={handleRun}
+          onSubmit={handleSubmit}
+          runResult={runResult}
+          submission={submission}
+          previousSubmissions={previousSubmissions}
+          userExists={!!user}
+        />
+      </motion.div>
     </div>
   );
 }
