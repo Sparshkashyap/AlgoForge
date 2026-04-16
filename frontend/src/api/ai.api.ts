@@ -1,7 +1,31 @@
 import API from "./axios";
 
-export const getAiHintApi = (payload: {
+export const generateProblemCodePackApi = async (payload: {
+  title: string;
+  description: string;
+  constraints?: string;
+  referenceLanguage: "javascript" | "python" | "cpp" | "java" | "c";
+  referenceCode: string;
+}) => {
+  const response = await API.post("/ai/generate-problem-code-pack", payload);
+  return response.data;
+};
+
+export const getAiHintApi = async (payload: {
   title: string;
   description: string;
   code: string;
-}) => API.post("/ai/hint", payload);
+}) => {
+  const response = await API.post("/ai/hint", payload);
+  return response.data;
+};
+
+export const reviewCodeApi = async (payload: {
+  title: string;
+  description: string;
+  code: string;
+  language: string;
+}) => {
+  const response = await API.post("/ai/review", payload);
+  return response.data;
+};

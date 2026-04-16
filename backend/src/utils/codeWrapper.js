@@ -19,27 +19,23 @@ const stripJavaClassWrapper = (code) => {
   return clean;
 };
 
+const trim = (v = "") => String(v).trim();
+
 export const buildExecutableCode = ({ language, userCode, driverCode }) => {
-  const cleanUserCode = trimTrailing(userCode);
-  const cleanDriverCode = trimTrailing(driverCode);
+  const code = trim(userCode);
+  const driver = trim(driverCode?.[language]);
 
-  if (!cleanUserCode) {
-    const error = new Error("User code is required");
-    error.statusCode = 400;
-    throw error;
-  }
+  if (!code) throw new Error("User code missing");
+  if (!driver) throw new Error(`Driver missing for ${language}`);
 
+  // 🚨 IMPORTANT: never mix languages
   switch (language) {
-    case "java": {
-      // Java ke liye driverCode ignore karo
-      // Hum directly Main class me main() inject karenge
-      const classBody = stripJavaClassWrapper(cleanUserCode);
+    case "java":
+      return `
+import java.util.*;
+${code}
 
-      return `import java.util.*;
-
-public class Main {
-${classBody ? `\n${classBody}\n` : ""}
-
+class Driver {
     public static void main(String[] args) {
         Scanner sc = new Scanner(System.in);
         StringBuilder input = new StringBuilder();
@@ -48,35 +44,60 @@ ${classBody ? `\n${classBody}\n` : ""}
             input.append(sc.nextLine()).append("\\n");
         }
 
-        String result = solve(input.toString());
-        System.out.print(result);
-
-        sc.close();
+        System.out.print(Main.solve(input.toString()));
     }
 }
 `;
-    }
 
     case "cpp":
-    case "c":
-    case "javascript":
-    case "python": {
-      if (!cleanDriverCode) {
-        const error = new Error(`Driver code is missing for language: ${language}`);
-        error.statusCode = 500;
-        throw error;
-      }
+      return `
+#include <bits/stdc++.h>
+using namespace std;
 
-      return `${cleanUserCode}
+${code}
 
-${cleanDriverCode}
+int main() {
+    string input, line;
+    while (getline(cin, line)) input += line + "\\n";
+    cout << solve(input);
+}
 `;
-    }
 
-    default: {
-      const error = new Error("Unsupported language for wrapping");
-      error.statusCode = 400;
-      throw error;
-    }
+    case "c":
+      return `
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+${code}
+
+int main() {
+    char input[10000];
+    int len = fread(input, 1, sizeof(input)-1, stdin);
+    input[len] = '\\0';
+    printf("%s", solve(input));
+}
+`;
+
+    case "javascript":
+      return `
+${code}
+
+const fs = require("fs");
+const input = fs.readFileSync(0, "utf-8").trim();
+process.stdout.write(String(solve(input)));
+`;
+
+    case "python":
+      return `
+${code}
+
+import sys
+input_data = sys.stdin.read().strip()
+print(solve(input_data))
+`;
+
+    default:
+      throw new Error("Unsupported language");
   }
 };

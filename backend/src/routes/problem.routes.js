@@ -11,6 +11,7 @@ import {
 } from "../controllers/problem.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminMiddleware } from "../middleware/admin.middleware.js";
+import { creatorOrAdminMiddleware } from "../middleware/creatorOrAdmin.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import {
   createProblemSchema,
@@ -27,7 +28,7 @@ router.get("/:slug", getProblemBySlugController);
 router.post(
   "/preview-run",
   authMiddleware,
-  adminMiddleware,
+  creatorOrAdminMiddleware,
   validate(previewProblemRunSchema),
   previewProblemRunController
 );
@@ -35,7 +36,7 @@ router.post(
 router.post(
   "/",
   authMiddleware,
-  adminMiddleware,
+  creatorOrAdminMiddleware,
   validate(createProblemSchema),
   createProblemController
 );
@@ -43,7 +44,7 @@ router.post(
 router.put(
   "/:problemId",
   authMiddleware,
-  adminMiddleware,
+  creatorOrAdminMiddleware,
   validate(createProblemSchema),
   updateProblemController
 );
@@ -51,7 +52,7 @@ router.put(
 router.delete(
   "/:problemId",
   authMiddleware,
-  adminMiddleware,
+  creatorOrAdminMiddleware,
   deleteProblemController
 );
 

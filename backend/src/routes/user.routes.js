@@ -1,9 +1,18 @@
 import express from "express";
-import { dashboardController } from "../controllers/user.controller.js";
+import {
+  getMyProfileController,
+  updateMyProfileController,
+  uploadAvatarController,
+} from "../controllers/user.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
+import { upload } from "../middleware/upload.middleware.js";
 
 const router = express.Router();
 
-router.get("/dashboard", authMiddleware, dashboardController);
+router.use(authMiddleware);
+
+router.get("/me", getMyProfileController);
+router.patch("/me", updateMyProfileController);
+router.post("/me/avatar", upload.single("avatar"), uploadAvatarController);
 
 export default router;

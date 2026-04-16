@@ -1,9 +1,22 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
+import aiRoutes from "./routes/ai.routes.js";
 import morgan from "morgan";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
+
+import dailyQuestionRoutes from "./routes/dailyQuestion.routes.js";
+import exportRoutes from "./routes/export.routes.js";
+
+import billingRoutes from "./routes/billing.routes.js";
+import webhookRoutes from "./routes/webhook.routes.js";
+
+import adminRoutes from "./routes/admin.routes.js";
+import userRoutes from "./routes/user.routes.js";
+
+import session from "express-session";
+import passport from "./config/passport.js";
 
 import env from "./config/env.js";
 import prisma from "./config/db.js";
@@ -32,6 +45,42 @@ app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cookieParser());
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
+app.use("/api/admin", adminRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/ai", aiRoutes);
+
+app.use("/api/daily-question", dailyQuestionRoutes);
+app.use("/api/export", exportRoutes);
+
+app.use(
+  session({
+    secret: env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: env.NODE_ENV === "production",
+      httpOnly: true,
+      sameSite: "lax",
+    },
+  })
+);
+
+app.use(
+  "/api/webhooks/razorpay",
+  express.raw({
+    type: "application/json",
+    limit: "2mb",
+    verify: (req, _res, buf) => {
+      req.rawBody = buf.toString("utf8");
+    },
+  })
+);
+
+app.use("/api/billing", billingRoutes);
+app.use("/api/webhooks", webhookRoutes);
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(
   rateLimit({

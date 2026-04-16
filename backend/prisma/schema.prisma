@@ -10,11 +10,13 @@ datasource db {
 
 enum UserRole {
   USER
+  CREATOR
   ADMIN
 }
 
 enum UserPlan {
   FREE
+  STANDARD
   PRO
 }
 
@@ -36,25 +38,37 @@ model User {
   avatarUrl   String?
   solvedCount Int          @default(0)
   streak      Int          @default(0)
+  lastSeenAt  DateTime?
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
-  problems    Problem[]    @relation("ProblemAuthor")
-  submissions Submission[]
+  razorpayCustomerId     String?
+  razorpaySubscriptionId String?
+  subscriptionStatus     String?
+  currentPeriodEnd       DateTime?
+
+  problems            Problem[]                  @relation("ProblemAuthor")
+  submissions         Submission[]
+  passwordResetTokens PasswordResetToken[]
+  aiUsages            AIUsage[]
+  userBadges          UserBadge[]
+  dailyAttempts       UserDailyQuestionAttempt[]
 
   @@index([provider, providerId])
+  @@index([role])
+  @@index([plan])
 }
 
 model Problem {
-  id                 String       @id @default(uuid())
+  id                 String   @id @default(uuid())
   title              String
-  slug               String       @unique
+  slug               String   @unique
   description        String
   difficulty         String
   tags               String[]
   constraints        String?
-  isPremium          Boolean      @default(false)
-  boilerplateMode    String       @default("provided")
+  isPremium          Boolean  @default(false)
+  boilerplateMode    String   @default("provided")
   starterCode        Json?
   sampleInput        String?
   sampleOutput       String?
@@ -62,15 +76,16 @@ model Problem {
   languageTemplates  Json?
   referenceSolutions Json?
   driverCode         Json?
-  isPublished        Boolean      @default(false)
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  isPublished        Boolean  @default(false)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  createdById        String?
-  createdBy          User?        @relation("ProblemAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById String?
+  createdBy   User?   @relation("ProblemAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
-  testCases          TestCase[]
-  submissions        Submission[]
+  testCases     TestCase[]
+  submissions   Submission[]
+  dailyQuestion DailyQuestion?
 }
 
 model TestCase {
@@ -81,7 +96,7 @@ model TestCase {
   createdAt DateTime @default(now())
 
   problemId String
-  problem   Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  problem   Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
 
 model Submission {
@@ -100,10 +115,85 @@ model Submission {
   totalCount    Int      @default(0)
   createdAt     DateTime @default(now())
 
-  userId        String
-  problemId     String
+  userId    String
+  problemId String
 
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  problem       Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
 }
 
+model PasswordResetToken {
+  id        String    @id @default(uuid())
+  token     String    @unique
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AIUsage {
+  id        String   @id @default(uuid())
+  userId    String
+  feature   String
+  prompt    String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([feature])
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  title       String
+  description String
+  icon        String?
+  createdAt   DateTime @default(now())
+
+  userBadges UserBadge[]
+}
+
+model UserBadge {
+  id        String   @id @default(uuid())
+  userId    String
+  badgeId   String
+  awardedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+  @@index([badgeId])
+}
+
+model DailyQuestion {
+  id         String   @id @default(uuid())
+  problemId  String   @unique
+  activeDate DateTime @unique
+  createdAt  DateTime @default(now())
+
+  problem  Problem                    @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  attempts UserDailyQuestionAttempt[]
+}
+
+model UserDailyQuestionAttempt {
+  id              String   @id @default(uuid())
+  userId          String
+  dailyQuestionId String
+  status          String
+  attemptedAt     DateTime @default(now())
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dailyQuestion DailyQuestion @relation(fields: [dailyQuestionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, dailyQuestionId])
+  @@index([userId])
+  @@index([dailyQuestionId])
+}

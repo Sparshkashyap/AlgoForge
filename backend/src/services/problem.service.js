@@ -3,7 +3,7 @@ import { generateProblemSlug } from "../utils/slug.js";
 import { judgeSubmission } from "./judge.service.js";
 import { buildExecutableCode } from "../utils/codeWrapper.js";
 
-const buildProblemData = (payload, adminUserId, slug) => ({
+const buildProblemData = (payload, creatorUserId, slug) => ({
   title: payload.title.trim(),
   slug,
   description: payload.description.trim(),
@@ -20,10 +20,10 @@ const buildProblemData = (payload, adminUserId, slug) => ({
   referenceSolutions: payload.referenceSolutions,
   driverCode: payload.driverCode,
   isPublished: payload.isPublished ?? false,
-  createdById: adminUserId,
+  createdById: creatorUserId,
 });
 
-export const createProblemService = async (payload, adminUserId) => {
+export const createProblemService = async (payload, creatorUserId) => {
   const slug = generateProblemSlug(payload.title);
 
   const existing = await prisma.problem.findUnique({
@@ -38,7 +38,7 @@ export const createProblemService = async (payload, adminUserId) => {
 
   const problem = await prisma.problem.create({
     data: {
-      ...buildProblemData(payload, adminUserId, slug),
+      ...buildProblemData(payload, creatorUserId, slug),
       testCases: {
         create: payload.testCases.map((testCase) => ({
           input: testCase.input,
@@ -62,14 +62,34 @@ export const createProblemService = async (payload, adminUserId) => {
   return problem;
 };
 
-export const updateProblemService = async (problemId, payload, adminUserId) => {
+export const updateProblemService = async (problemId, payload, creatorUserId) => {
   const existing = await prisma.problem.findUnique({
     where: { id: problemId },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      createdById: true,
+    },
   });
 
   if (!existing) {
     const error = new Error("Problem not found");
     error.statusCode = 404;
+    throw error;
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: creatorUserId },
+    select: { id: true, role: true },
+  });
+
+  const canEdit =
+    actor?.role === "ADMIN" || existing.createdById === creatorUserId;
+
+  if (!canEdit) {
+    const error = new Error("You are not allowed to update this problem");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -85,7 +105,7 @@ export const updateProblemService = async (problemId, payload, adminUserId) => {
   const updated = await prisma.problem.update({
     where: { id: problemId },
     data: {
-      ...buildProblemData(payload, adminUserId, slug),
+      ...buildProblemData(payload, existing.createdById, slug),
       testCases: {
         create: payload.testCases.map((testCase) => ({
           input: testCase.input,
@@ -109,15 +129,32 @@ export const updateProblemService = async (problemId, payload, adminUserId) => {
   return updated;
 };
 
-export const deleteProblemService = async (problemId) => {
+export const deleteProblemService = async (problemId, requesterUserId) => {
   const existing = await prisma.problem.findUnique({
     where: { id: problemId },
-    select: { id: true },
+    select: {
+      id: true,
+      createdById: true,
+    },
   });
 
   if (!existing) {
     const error = new Error("Problem not found");
     error.statusCode = 404;
+    throw error;
+  }
+
+  const actor = await prisma.user.findUnique({
+    where: { id: requesterUserId },
+    select: { id: true, role: true },
+  });
+
+  const canDelete =
+    actor?.role === "ADMIN" || existing.createdById === requesterUserId;
+
+  if (!canDelete) {
+    const error = new Error("You are not allowed to delete this problem");
+    error.statusCode = 403;
     throw error;
   }
 
@@ -200,7 +237,9 @@ export const getProblemBySlugService = async (slug, viewer = null) => {
   }
 
   const hasPremiumAccess =
-    !problem.isPremium || viewer?.role === "ADMIN" || viewer?.plan === "PRO";
+    !problem.isPremium ||
+    viewer?.role === "ADMIN" ||
+    ["STANDARD", "PRO"].includes(viewer?.plan);
 
   return {
     id: problem.id,

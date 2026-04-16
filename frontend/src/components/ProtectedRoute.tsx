@@ -3,7 +3,13 @@ import { Navigate, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
-const ProtectedRoute = ({ children }: { children: ReactNode }) => {
+const ProtectedRoute = ({
+  children,
+  allowRoles,
+}: {
+  children: ReactNode;
+  allowRoles?: Array<"USER" | "CREATOR" | "ADMIN">;
+}) => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
@@ -22,6 +28,10 @@ const ProtectedRoute = ({ children }: { children: ReactNode }) => {
 
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  }
+
+  if (allowRoles && !allowRoles.includes(user.role)) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   return <>{children}</>;

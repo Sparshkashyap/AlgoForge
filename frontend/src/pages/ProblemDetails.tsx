@@ -10,6 +10,8 @@ import type { Problem } from "@/types/problem.types";
 import type { Submission } from "@/types/submission.types";
 import { fireCenterConfetti } from "@/components/ConfettiBurst";
 import ProblemWorkspace from "@/components/ProblemWorkspace";
+import AIHintPanel from "@/components/AIHintPanel";
+import AICodeReview from "@/components/AICodeReview";
 
 type SupportedLanguage = "javascript" | "python" | "cpp" | "java" | "c";
 
@@ -295,7 +297,11 @@ export default function ProblemDetails() {
           previousSubmissions={previousSubmissions}
           userExists={!!user}
         />
+
+        
       </motion.div>
+
+      
     </div>
   );
 }

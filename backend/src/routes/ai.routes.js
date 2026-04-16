@@ -2,18 +2,16 @@ import express from "express";
 import {
   generateHintController,
   generateProblemCodePackController,
+  reviewCodeController,
 } from "../controllers/ai.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
-import { adminMiddleware } from "../middleware/admin.middleware.js";
 
 const router = express.Router();
 
-router.post("/hint", authMiddleware, generateHintController);
-router.post(
-  "/generate-problem-code-pack",
-  authMiddleware,
-  adminMiddleware,
-  generateProblemCodePackController
-);
+router.use(authMiddleware);
+
+router.post("/generate-problem-code-pack", generateProblemCodePackController);
+router.post("/hint", generateHintController);
+router.post("/review", reviewCodeController);
 
 export default router;

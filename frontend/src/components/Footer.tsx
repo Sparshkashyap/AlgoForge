@@ -1,39 +1,30 @@
 import { Link } from "react-router-dom";
-import { Code2, Heart } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
-export function Footer() {
+export default function Footer() {
   return (
-    <footer className="border-t border-border/60 bg-background/80">
-      <div className="container flex flex-col gap-6 py-10 md:flex-row md:items-center md:justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-            <Code2 className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <div>
-            <p className="font-heading text-lg font-bold">AlgoForge</p>
-            <p className="text-sm text-muted-foreground">
-              Build stronger problem-solving skills.
-            </p>
-          </div>
+    <footer className="mt-24 border-t border-border/60 bg-background/80">
+      <div className="container flex flex-col gap-8 py-10 md:flex-row md:items-center md:justify-between">
+        <div>
+          <BrandLogo />
+          <p className="mt-4 max-w-md text-sm text-muted-foreground">
+            Crafted for serious prep. Premium UI now, deep platform systems next.
+          </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-5 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-foreground transition-colors">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+          <Link to="/" className="transition hover:text-foreground">
             Home
           </Link>
-          <Link to="/problems" className="hover:text-foreground transition-colors">
+          <Link to="/problems" className="transition hover:text-foreground">
             Problems
           </Link>
-          <Link to="/login" className="hover:text-foreground transition-colors">
+          <Link to="/login" className="transition hover:text-foreground">
             Login
           </Link>
-          <Link to="/signup" className="hover:text-foreground transition-colors">
+          <Link to="/signup" className="transition hover:text-foreground">
             Signup
           </Link>
-        </div>
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          Crafted with <Heart className="h-4 w-4 text-red-500" /> for serious prep
         </div>
       </div>
     </footer>

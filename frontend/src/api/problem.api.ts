@@ -10,15 +10,6 @@ export const getProblemBySlugApi = async (slug: string) => {
   return response.data;
 };
 
-export const runProblemApi = async (
-  problemId: string,
-  payload: {
-    language: "javascript" | "python" | "cpp" | "java" | "c";
-    code: string;
-    input: string;
-    expectedOutput?: string;
-  }
-) => {
-  const response = await API.post(`/execution/${problemId}/run`, payload);
-  return response.data;
+export const runProblemApi = async (problemId: string, payload: any) => {
+  return API.post(`/execution/${problemId}/run`, payload);
 };

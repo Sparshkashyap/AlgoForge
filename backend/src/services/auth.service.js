@@ -1,25 +1,14 @@
 import prisma from "../config/db.js";
-import { hashPassword, comparePassword } from "../utils/password.js";
+import { comparePassword, hashPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
 
-const safeUserSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  plan: true,
-  streak: true,
-  solvedCount: true,
-  createdAt: true
-};
-
 export const signupService = async ({ name, email, password }) => {
-  const existingUser = await prisma.user.findUnique({
-    where: { email }
+  const existing = await prisma.user.findUnique({
+    where: { email },
   });
 
-  if (existingUser) {
-    const error = new Error("User already exists with this email");
+  if (existing) {
+    const error = new Error("Email already in use");
     error.statusCode = 409;
     throw error;
   }
@@ -31,84 +20,49 @@ export const signupService = async ({ name, email, password }) => {
       name,
       email,
       password: hashedPassword,
-      role: "USER"
+      provider: "LOCAL",
+      lastSeenAt: new Date(),
     },
-    select: safeUserSelect
   });
 
   const token = signToken({
-    id: user.id,
+    userId: user.id,
     email: user.email,
-    role: user.role
+    role: user.role,
   });
 
-  return {
-    user,
-    token
-  };
+  return { user, token };
 };
 
 export const loginService = async ({ email, password }) => {
   const user = await prisma.user.findUnique({
-    where: { email }
+    where: { email },
   });
 
-  if (!user) {
-    const error = new Error("Invalid email or password");
+  if (!user || !user.password) {
+    const error = new Error("Invalid credentials");
     error.statusCode = 401;
     throw error;
   }
 
-  if (!user.password) {
-    const error = new Error("Use social login for this account");
-    error.statusCode = 400;
-    throw error;
-  }
+  const valid = await comparePassword(password, user.password);
 
-  const matched = await comparePassword(password, user.password);
-
-  if (!matched) {
-    const error = new Error("Invalid email or password");
+  if (!valid) {
+    const error = new Error("Invalid credentials");
     error.statusCode = 401;
     throw error;
   }
 
-  const safeUser = {
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    plan: user.plan,
-    streak: user.streak,
-    solvedCount: user.solvedCount,
-    createdAt: user.createdAt
-  };
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { lastSeenAt: new Date() },
+  });
 
   const token = signToken({
-    id: user.id,
+    userId: user.id,
     email: user.email,
-    role: user.role
+    role: user.role,
   });
 
-  return {
-    user: safeUser,
-    token
-  };
-};
-
-export const getMeService = async (userId) => {
-  return prisma.user.findUnique({
-    where: { id: userId },
-    select: safeUserSelect
-  });
-};
-
-export const promoteUserToAdminService = async (userId) => {
-  return prisma.user.update({
-    where: { id: userId },
-    data: {
-      role: "ADMIN"
-    },
-    select: safeUserSelect
-  });
+  return { user, token };
 };

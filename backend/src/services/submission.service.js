@@ -34,10 +34,12 @@ export const createSubmissionService = async ({
   }
 
   const hasPremiumAccess =
-    !problem.isPremium || user?.role === "ADMIN" || user?.plan === "PRO";
+    !problem.isPremium ||
+    user?.role === "ADMIN" ||
+    ["STANDARD", "PRO"].includes(user?.plan);
 
   if (!hasPremiumAccess) {
-    const error = new Error("Upgrade to Pro to access this problem");
+    const error = new Error("Upgrade to a premium plan to access this problem");
     error.statusCode = 403;
     throw error;
   }

@@ -1,6 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
 import {
-  Code2,
   LayoutDashboard,
   LogIn,
   Menu,
@@ -14,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ModeToggle } from "@/components/ModeToggle";
 import { UserNav } from "@/components/UserNav";
+import BrandLogo from "@/components/BrandLogo";
 
 const publicLinks = [
   { label: "Home", href: "/" },
@@ -24,35 +24,25 @@ export function Navbar() {
   const location = useLocation();
   const { user, isAuthenticated } = useAuth();
 
-  const privateLinks = [
-    { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { label: "Problems", href: "/problems", icon: Sparkles },
-    ...(user?.role === "ADMIN"
-      ? [
-          { label: "Create Problem", href: "/create-problem", icon: PlusSquare },
-          { label: "Manage Problems", href: "/manage-problems", icon: ListChecks },
-        ]
-      : []),
-  ];
-
+const privateLinks = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Problems", href: "/problems", icon: Sparkles },
+  ...(user?.role === "CREATOR" || user?.role === "ADMIN"
+    ? [{ label: "Create Problem", href: "/create-problem", icon: PlusSquare }]
+    : []),
+  ...(user?.role === "ADMIN"
+    ? [
+        { label: "Manage Problems", href: "/manage-problems", icon: ListChecks },
+        { label: "Manage Users", href: "/manage-users", icon: ListChecks },
+      ]
+    : []),
+];
   const links = isAuthenticated ? privateLinks : publicLinks;
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/75 backdrop-blur-xl">
       <div className="container flex h-16 items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl gradient-primary shadow-sm">
-            <Code2 className="h-4 w-4 text-primary-foreground" />
-          </div>
-          <div className="flex flex-col leading-none">
-            <span className="font-heading text-lg font-bold tracking-tight">
-              AlgoForge
-            </span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-              AI Coding Platform
-            </span>
-          </div>
-        </Link>
+        <BrandLogo />
 
         <nav className="hidden md:flex items-center gap-1">
           {links.map((link) => {
@@ -95,7 +85,7 @@ export function Navbar() {
                 </Button>
               </Link>
               <Link to="/signup">
-                <Button className="rounded-full gradient-primary text-primary-foreground border-0">
+                <Button className="rounded-full border-0 bg-primary text-primary-foreground shadow-[0_10px_30px_rgba(99,102,241,0.22)]">
                   <UserPlus className="mr-2 h-4 w-4" />
                   Get Started
                 </Button>
@@ -116,17 +106,7 @@ export function Navbar() {
 
             <SheetContent side="right" className="w-[320px] p-0">
               <div className="border-b border-border px-6 py-5">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl gradient-primary">
-                    <Code2 className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <p className="font-heading text-lg font-bold">AlgoForge</p>
-                    <p className="text-xs text-muted-foreground">
-                      Practice with precision
-                    </p>
-                  </div>
-                </div>
+                <BrandLogo />
               </div>
 
               <div className="px-4 py-4">
@@ -164,19 +144,13 @@ export function Navbar() {
                         {user.role === "ADMIN" ? (
                           <>
                             <Link to="/create-problem">
-                              <Button
-                                variant="outline"
-                                className="w-full rounded-xl"
-                              >
+                              <Button variant="outline" className="w-full rounded-xl">
                                 Create Problem
                               </Button>
                             </Link>
 
                             <Link to="/manage-problems">
-                              <Button
-                                variant="outline"
-                                className="w-full rounded-xl"
-                              >
+                              <Button variant="outline" className="w-full rounded-xl">
                                 Manage Problems
                               </Button>
                             </Link>
@@ -192,7 +166,7 @@ export function Navbar() {
                         </Button>
                       </Link>
                       <Link to="/signup">
-                        <Button className="w-full rounded-xl gradient-primary text-primary-foreground border-0">
+                        <Button className="w-full rounded-xl border-0 bg-primary text-primary-foreground">
                           Create account
                         </Button>
                       </Link>

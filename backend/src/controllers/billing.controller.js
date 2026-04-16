@@ -1,15 +1,47 @@
-import { createOrderService } from "../services/billing.service.js";
-import { successResponse } from "../utils/response.js";
+import {
+  cancelMySubscriptionService,
+  createSubscriptionCheckoutService,
+  getMyBillingService,
+} from "../services/billing.service.js";
 
-export const createOrderController = async (req, res, next) => {
+export const createSubscriptionCheckoutController = async (req, res, next) => {
   try {
-    const { amount } = req.body;
-    const order = await createOrderService({
-      amount,
-      receipt: `receipt_${Date.now()}`
+    const result = await createSubscriptionCheckoutService({
+      userId: req.user.userId,
+      tier: req.body.tier,
     });
 
-    return successResponse(res, order, "Razorpay order created", 201);
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyBillingController = async (req, res, next) => {
+  try {
+    const result = await getMyBillingService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelMySubscriptionController = async (req, res, next) => {
+  try {
+    const result = await cancelMySubscriptionService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      message: "Subscription cancellation requested",
+      data: result,
+    });
   } catch (error) {
     next(error);
   }

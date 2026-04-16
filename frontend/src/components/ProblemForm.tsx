@@ -8,11 +8,11 @@ import TestCaseForm, { type TestCaseItem } from "@/components/TestCaseForm";
 import SubmissionResult from "@/components/SubmissionResult";
 import {
   createProblemApi,
-  generateAllLanguageTemplatesApi,
   previewRunProblemApi,
   updateProblemApi,
 } from "@/api/adminProblem.api";
 import type { Problem } from "@/types/problem.types";
+import { generateProblemCodePackApi } from "@/api/ai.api";
 
 const LANGUAGES = ["javascript", "python", "cpp", "java", "c"] as const;
 type LanguageKey = (typeof LANGUAGES)[number];
@@ -101,7 +101,7 @@ export default function ProblemForm({
       ? initialProblem.testCases.map((tc) => ({
           input: tc.input,
           expected: tc.expected,
-          isHidden: tc.isHidden,
+          isHidden: tc.isHidden ?? false,
         }))
       : [
           {
@@ -178,7 +178,7 @@ export default function ProblemForm({
     try {
       setGenerating(true);
 
-      const data = await generateAllLanguageTemplatesApi({
+      const data = await generateProblemCodePackApi({
         title: form.title,
         description: form.description,
         constraints: form.constraints,
@@ -206,7 +206,7 @@ export default function ProblemForm({
         },
       }));
 
-      toast.success("All language templates generated");
+      toast.success("All code generated successfully");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Generation failed");
     } finally {

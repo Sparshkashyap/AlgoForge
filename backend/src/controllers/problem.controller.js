@@ -51,18 +51,17 @@ export const deleteProblemController = async (req, res, next) => {
   }
 };
 
-export const previewProblemRunController = async (req, res, next) => {
-  try {
-    const result = await previewProblemRunService(req.validated.body);
+export const previewProblemRunController = async (req, res) => {
+  const { language, code, testCases, driverCode } = req.body;
 
-    return res.status(200).json({
-      success: true,
-      message: "Preview run completed",
-      data: result,
-    });
-  } catch (error) {
-    next(error);
-  }
+  const result = await runProblemCodeService({
+    language,
+    code,
+    testCases,
+    driverCode,
+  });
+
+  res.json({ data: result });
 };
 
 export const listPublishedProblemsController = async (req, res, next) => {

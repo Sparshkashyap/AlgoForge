@@ -1,47 +1,52 @@
-import prisma from "../config/db.js";
-import { successResponse } from "../utils/response.js";
+import {
+  getMyProfileService,
+  updateMyProfileService,
+  uploadAvatarService,
+} from "../services/user.service.js";
 
-export const dashboardController = async (req, res, next) => {
+export const getMyProfileController = async (req, res, next) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        solvedCount: true,
-        streak: true,
-        plan: true,
-        role: true,
-        createdAt: true
-      }
+    const user = await getMyProfileService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateMyProfileController = async (req, res, next) => {
+  try {
+    const user = await updateMyProfileService({
+      userId: req.user.userId,
+      name: req.body.name,
+      email: req.body.email,
     });
 
-    const recentSubmissions = await prisma.submission.findMany({
-      where: { userId: req.user.id },
-      include: {
-        problem: {
-          select: {
-            title: true,
-            slug: true,
-            difficulty: true
-          }
-        }
-      },
-      orderBy: {
-        createdAt: "desc"
-      },
-      take: 10
+    return res.status(200).json({
+      success: true,
+      message: "Profile updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const uploadAvatarController = async (req, res, next) => {
+  try {
+    const user = await uploadAvatarService({
+      userId: req.user.userId,
+      file: req.file,
     });
 
-    return successResponse(
-      res,
-      {
-        user,
-        recentSubmissions
-      },
-      "Dashboard fetched"
-    );
+    return res.status(200).json({
+      success: true,
+      message: "Avatar uploaded successfully",
+      data: user,
+    });
   } catch (error) {
     next(error);
   }
