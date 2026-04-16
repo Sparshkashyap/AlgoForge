@@ -26,35 +26,43 @@ const testimonials = [
 
 export default function TestimonialGrid() {
   return (
-    <section className="mt-20">
-      <div className="max-w-2xl">
-        <p className="text-sm font-medium uppercase tracking-[0.28em] text-primary/80">
+    <section>
+      <div className="max-w-3xl">
+        <p className="text-xs font-medium uppercase tracking-[0.34em] text-primary/80">
           Loved by ambitious learners
         </p>
-        <h2 className="mt-4 font-heading text-3xl font-bold md:text-4xl">
-          Clean product direction matters when the workflow is the product.
+        <h2 className="mt-4 font-heading text-4xl font-black leading-tight md:text-6xl">
+          Strong workflow.
+          <span className="block text-muted-foreground">
+            Clear visual direction.
+          </span>
         </h2>
       </div>
 
-      <div className="mt-10 grid gap-5 lg:grid-cols-3">
+      <div className="mt-12 grid gap-5 lg:grid-cols-3">
         {testimonials.map((item, index) => (
           <motion.div
             key={item.name}
-            initial={{ opacity: 0, y: 18 }}
+            initial={{ opacity: 0, y: 22 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.35, delay: index * 0.08 }}
-            className="rounded-3xl border border-border bg-card/75 p-6 backdrop-blur-xl"
+            viewport={{ once: true, amount: 0.35 }}
+            transition={{ duration: 0.45, delay: index * 0.08 }}
+            whileHover={{ y: -8 }}
+            className="group relative overflow-hidden rounded-[1.9rem] border border-border/70 bg-card/75 p-6 shadow-[0_14px_44px_rgba(0,0,0,0.14)] backdrop-blur-2xl"
           >
-            <p className="text-sm leading-7 text-foreground/90">"{item.quote}"</p>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,hsl(var(--primary)/0.13),transparent_26%),radial-gradient(circle_at_bottom_left,hsl(var(--accent)/0.1),transparent_24%)] opacity-80" />
 
-            <div className="mt-6 flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 font-semibold text-primary">
-                {item.initials}
-              </div>
-              <div>
-                <p className="font-medium">{item.name}</p>
-                <p className="text-sm text-muted-foreground">{item.role}</p>
+            <div className="relative z-10">
+              <p className="text-base leading-8 text-foreground/92">“{item.quote}”</p>
+
+              <div className="mt-8 flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] border border-white/10 bg-gradient-to-br from-primary/20 to-accent/10 font-semibold text-primary">
+                  {item.initials}
+                </div>
+                <div>
+                  <p className="font-semibold">{item.name}</p>
+                  <p className="text-sm text-muted-foreground">{item.role}</p>
+                </div>
               </div>
             </div>
           </motion.div>

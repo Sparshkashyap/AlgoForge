@@ -1,68 +1,95 @@
-import { BrainCircuit, Briefcase, Code2, Trophy } from "lucide-react";
+import {
+  BrainCircuit,
+  BriefcaseBusiness,
+  Code2,
+  Sparkles,
+  Swords,
+  Wand2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 const features = [
   {
     title: "AI-Powered Hints",
     description:
-      "Get intelligent hints that guide you toward the solution without giving everything away.",
+      "Hints that sharpen your reasoning without dumping the answer in your lap.",
     icon: BrainCircuit,
   },
   {
     title: "Built-in Code Editor",
     description:
-      "Professional coding experience with focused execution flow and language-specific templates.",
+      "A focused coding flow with language-aware boilerplates and cleaner run feedback.",
     icon: Code2,
   },
   {
     title: "Live Contests",
     description:
-      "Compete in timed challenges and build pressure-handling skills with real scoring mechanics.",
-    icon: Trophy,
+      "Weekly pressure-driven practice with real timing, comparison, and leaderboard energy.",
+    icon: Swords,
   },
   {
     title: "Interview Prep",
     description:
-      "Curated problems and workflows designed around product-company hiring patterns.",
-    icon: Briefcase,
+      "Problem sets shaped around serious hiring patterns, not random filler content.",
+    icon: BriefcaseBusiness,
+  },
+  {
+    title: "Premium Motion UI",
+    description:
+      "A sharper visual system with stronger typography, layered gradients, and polished motion.",
+    icon: Wand2,
+  },
+  {
+    title: "Serious Product Direction",
+    description:
+      "Built to feel like a platform with intent, not a thin clone with generic cards.",
+    icon: Sparkles,
   },
 ];
 
 export default function FeatureShowcase() {
   return (
-    <section className="mt-20">
-      <div className="max-w-2xl">
-        <p className="text-sm font-medium uppercase tracking-[0.28em] text-primary/80">
+    <section>
+      <div className="max-w-3xl">
+        <p className="text-xs font-medium uppercase tracking-[0.34em] text-primary/80">
           Everything you need to level up
         </p>
-        <h2 className="mt-4 font-heading text-3xl font-bold md:text-4xl">
-          Built with a premium UI direction now, and ready for real backend depth next.
+        <h2 className="mt-4 font-heading text-4xl font-black leading-tight md:text-6xl">
+          Premium UI direction now.
+          <span className="block text-muted-foreground">
+            Real backend depth next.
+          </span>
         </h2>
       </div>
 
-      <div className="mt-10 grid gap-5 md:grid-cols-2">
+      <div className="mt-12 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {features.map((feature, index) => {
           const Icon = feature.icon;
 
           return (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 18 }}
+              initial={{ opacity: 0, y: 26 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.35, delay: index * 0.08 }}
-              className="group rounded-3xl border border-border bg-card/70 p-6 backdrop-blur-xl transition hover:border-primary/30 hover:shadow-[0_0_0_1px_rgba(139,92,246,0.18)]"
+              viewport={{ once: true, amount: 0.35 }}
+              transition={{ duration: 0.45, delay: index * 0.08 }}
+              whileHover={{ y: -8 }}
+              className="group relative overflow-hidden rounded-[1.9rem] border border-border/70 bg-card/75 p-6 shadow-[0_14px_44px_rgba(0,0,0,0.14)] backdrop-blur-2xl"
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary transition group-hover:scale-105">
-                <Icon className="h-5 w-5" />
-              </div>
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.16),transparent_28%),radial-gradient(circle_at_bottom_right,hsl(var(--accent)/0.14),transparent_24%)] opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
 
-              <h3 className="mt-5 font-heading text-xl font-semibold">
-                {feature.title}
-              </h3>
-              <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                {feature.description}
-              </p>
+              <div className="relative z-10">
+                <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-white/10 bg-gradient-to-br from-primary/20 via-primary/10 to-accent/15 text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.15)]">
+                  <Icon className="h-6 w-6" />
+                </div>
+
+                <h3 className="mt-6 font-heading text-2xl font-bold">
+                  {feature.title}
+                </h3>
+                <p className="mt-3 text-sm leading-7 text-muted-foreground">
+                  {feature.description}
+                </p>
+              </div>
             </motion.div>
           );
         })}

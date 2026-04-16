@@ -1,21 +1,21 @@
-import { Code2 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Hexagon, Sparkles } from "lucide-react";
 
-export default function BrandLogo() {
+export function BrandLogo() {
   return (
-    <Link to="/" className="flex items-center gap-3">
-      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-primary via-accent to-primary shadow-[0_10px_30px_rgba(99,102,241,0.25)]">
-        <Code2 className="h-5 w-5 text-primary-foreground" />
+    <div className="group flex items-center gap-3">
+      <div className="relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-[linear-gradient(135deg,hsl(var(--primary)/0.28),hsl(var(--accent)/0.16))] shadow-[0_10px_30px_rgba(100,90,255,0.22)]">
+        <Hexagon className="h-5 w-5 text-primary" strokeWidth={2.2} />
+        <Sparkles className="absolute right-1.5 top-1.5 h-3 w-3 text-accent" strokeWidth={2.4} />
       </div>
 
       <div className="leading-none">
-        <div className="font-heading text-xl font-bold tracking-tight">
+        <div className="font-heading text-xl font-black tracking-[-0.04em] text-foreground">
           AlgoForge
         </div>
-        <div className="mt-1 text-[10px] uppercase tracking-[0.28em] text-muted-foreground">
-          Build stronger problem-solving skills
+        <div className="mt-1 text-[10px] uppercase tracking-[0.34em] text-muted-foreground">
+          serious prep
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
