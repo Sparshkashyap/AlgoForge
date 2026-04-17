@@ -300,8 +300,6 @@ export default function ProblemDetails() {
 
         
       </motion.div>
-
-      
     </div>
   );
 }
