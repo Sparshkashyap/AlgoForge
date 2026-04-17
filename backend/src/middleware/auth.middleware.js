@@ -1,14 +1,10 @@
-import { verifyToken } from "../utils/jwt.js";
+import jwt from "jsonwebtoken";
+import prisma from "../config/db.js";
+import env from "../config/env.js";
 
 export const authMiddleware = async (req, res, next) => {
   try {
-    const bearerToken =
-      req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.split(" ")[1]
-        : null;
-
-    const cookieToken = req.cookies?.accessToken || null;
-    const token = bearerToken || cookieToken;
+    const token = req.cookies?.accessToken;
 
     if (!token) {
       return res.status(401).json({
@@ -17,26 +13,41 @@ export const authMiddleware = async (req, res, next) => {
       });
     }
 
-    const decoded = verifyToken(token);
+    const decoded = jwt.verify(token, env.JWT_SECRET);
 
-    req.user = {
-      userId: decoded.userId || decoded.id,
-      email: decoded.email,
-      role: decoded.role,
-    };
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        plan: true,
+        avatarUrl: true,
+        solvedCount: true,
+        streak: true,
+        createdAt: true,
+        lastSeenAt: true,
+      },
+    });
 
-    if (!req.user.userId) {
+    if (!user) {
       return res.status(401).json({
         success: false,
-        message: "Invalid token payload",
+        message: "Unauthorized",
       });
     }
 
+    req.user = {
+      userId: user.id,
+      ...user,
+    };
+
     next();
-  } catch (error) {
+  } catch (_error) {
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token",
+      message: "Unauthorized",
     });
   }
 };

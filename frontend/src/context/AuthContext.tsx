@@ -29,8 +29,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const refreshMe = useCallback(async () => {
     try {
-      const data = await meApi();
-      setUser(data.user);
+      const response = await meApi();
+      setUser(response.data ?? null);
     } catch {
       setUser(null);
     }
@@ -49,15 +49,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [refreshMe]);
 
   const signup = async (payload: SignupPayload) => {
-    const data = await signupApi(payload);
-    setUser(data.user);
-    return data.user;
+    const response = await signupApi(payload);
+
+    if (response.data) {
+      setUser(response.data);
+      return response.data;
+    }
+
+    await refreshMe();
+
+    const me = await meApi();
+    setUser(me.data ?? null);
+    return me.data;
   };
 
   const login = async (payload: LoginPayload) => {
-    const data = await loginApi(payload);
-    setUser(data.user);
-    return data.user;
+    const response = await loginApi(payload);
+
+    if (response.data) {
+      setUser(response.data);
+      return response.data;
+    }
+
+    await refreshMe();
+
+    const me = await meApi();
+    setUser(me.data ?? null);
+    return me.data;
   };
 
   const logout = async () => {
