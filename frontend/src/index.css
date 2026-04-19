@@ -80,7 +80,7 @@
       radial-gradient(circle at 10% 8%, rgba(124, 92, 255, 0.12), transparent 20%),
       radial-gradient(circle at 88% 12%, rgba(0, 210, 255, 0.09), transparent 16%),
       radial-gradient(circle at 50% 100%, rgba(124, 92, 255, 0.07), transparent 22%),
-      linear-gradient(to bottom, rgba(255,255,255,0.012), rgba(255,255,255,0));
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.012), rgba(255, 255, 255, 0));
     background-attachment: fixed;
   }
 
@@ -89,7 +89,7 @@
     background-image:
       radial-gradient(circle at 12% 10%, rgba(124, 92, 255, 0.12), transparent 24%),
       radial-gradient(circle at 88% 12%, rgba(0, 200, 255, 0.09), transparent 18%),
-      linear-gradient(to bottom, rgba(255,255,255,0.94), rgba(245,247,255,0.98));
+      linear-gradient(to bottom, rgba(255, 255, 255, 0.94), rgba(245, 247, 255, 0.98));
     background-attachment: fixed;
   }
 
@@ -164,10 +164,10 @@
     border-radius: 9999px;
     background: linear-gradient(
       90deg,
-      rgba(255,255,255,0.12) 0%,
-      rgba(255,255,255,0.02) 30%,
-      rgba(255,255,255,0.12) 60%,
-      rgba(255,255,255,0.02) 100%
+      rgba(255, 255, 255, 0.12) 0%,
+      rgba(255, 255, 255, 0.02) 30%,
+      rgba(255, 255, 255, 0.12) 60%,
+      rgba(255, 255, 255, 0.02) 100%
     );
     transform: translateX(-120%);
     transition: transform 540ms cubic-bezier(0.22, 1, 0.36, 1);
@@ -232,8 +232,8 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(255,255,255,0.16) 16%,
-      rgba(255,255,255,0.04) 70%,
+      rgba(255, 255, 255, 0.16) 16%,
+      rgba(255, 255, 255, 0.04) 70%,
       transparent 100%
     );
     pointer-events: none;
@@ -243,16 +243,17 @@
     background: linear-gradient(
       90deg,
       transparent 0%,
-      rgba(99,102,241,0.18) 16%,
-      rgba(99,102,241,0.04) 70%,
+      rgba(99, 102, 241, 0.18) 16%,
+      rgba(99, 102, 241, 0.04) 70%,
       transparent 100%
     );
   }
 
   .hero-brand-title {
-    line-height: 0.96;
-    letter-spacing: -0.02em;
-    padding-inline: 0.10em;
+    line-height: 0.88;
+    letter-spacing: -0.05em;
+    padding-inline: 0.06em;
+    white-space: nowrap;
     -webkit-font-smoothing: antialiased;
     text-rendering: geometricPrecision;
     will-change: clip-path, opacity, transform;
@@ -328,15 +329,15 @@
 
   .hero-preview-grid {
     background-image:
-      linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
     background-size: 34px 34px;
   }
 
   .light .hero-preview-grid {
     background-image:
-      linear-gradient(rgba(15,23,42,0.06) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(15,23,42,0.06) 1px, transparent 1px);
+      linear-gradient(rgba(15, 23, 42, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(15, 23, 42, 0.06) 1px, transparent 1px);
   }
 
   .hover-lift {
@@ -353,8 +354,8 @@
 
   .soft-grid {
     background-image:
-      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
     background-size: 44px 44px;
   }
 
@@ -404,12 +405,134 @@
     );
   }
 
+  .hero-mobile-typing-wrap {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 86px;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .hero-mobile-word {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    font-family: inherit;
+    font-size: 2.7rem;
+    font-weight: 800;
+    line-height: 0.9;
+    letter-spacing: -0.055em;
+    transform: translate(-50%, -50%);
+    white-space: nowrap;
+    text-transform: uppercase;
+    text-align: center;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.22);
+  }
+
+  .hero-mobile-word-algo {
+    width: 9ch;
+    overflow: hidden;
+    border-right: 2px solid rgba(255, 255, 255, 0.85);
+    animation:
+      heroTypeAlgo 5.6s steps(9, end) infinite,
+      heroCaretBlink 0.6s step-end infinite;
+  }
+
+  .hero-mobile-word-erudition {
+    width: 9ch;
+    overflow: hidden;
+    border-right: 2px solid rgba(255, 255, 255, 0.85);
+    opacity: 0;
+    animation:
+      heroTypeErudition 5.6s steps(9, end) infinite,
+      heroCaretBlink 0.6s step-end infinite;
+  }
+
+  @media (max-width: 640px) {
+    .hero-brand-title {
+      line-height: 0.9;
+      letter-spacing: -0.055em;
+      padding-inline: 0.18em;
+    }
+
+    .hero-chip {
+      @apply px-3 py-2;
+    }
+  }
+
+  @media (min-width: 641px) {
+    .hero-mobile-typing-wrap {
+      display: none;
+    }
+  }
+
   @keyframes heroGradientLeftToRight {
     0% {
       background-position: 0% 50%;
     }
     100% {
       background-position: 220% 50%;
+    }
+  }
+
+  @keyframes heroCaretBlink {
+    0%, 49% {
+      border-right-color: rgba(255, 255, 255, 0.85);
+    }
+    50%, 100% {
+      border-right-color: transparent;
+    }
+  }
+
+  @keyframes heroTypeAlgo {
+    0% {
+      width: 0ch;
+      opacity: 1;
+    }
+    8% {
+      width: 9ch;
+      opacity: 1;
+    }
+    34% {
+      width: 9ch;
+      opacity: 1;
+    }
+    42% {
+      width: 0ch;
+      opacity: 0;
+    }
+    100% {
+      width: 0ch;
+      opacity: 0;
+    }
+  }
+
+  @keyframes heroTypeErudition {
+    0% {
+      width: 0ch;
+      opacity: 0;
+    }
+    41% {
+      width: 0ch;
+      opacity: 0;
+    }
+    49% {
+      width: 9ch;
+      opacity: 1;
+    }
+    78% {
+      width: 9ch;
+      opacity: 1;
+    }
+    88% {
+      width: 0ch;
+      opacity: 0;
+    }
+    100% {
+      width: 0ch;
+      opacity: 0;
     }
   }
 }

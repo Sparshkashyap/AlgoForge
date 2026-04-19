@@ -45,3 +45,8 @@ export const markDailyQuestionAttemptApi = async (payload: {
   const response = await API.post("/daily-question/attempt", payload);
   return response.data;
 };
+
+export const getLeaderboardApi = async () => {
+  const response = await API.get("/users/leaderboard");
+  return response.data;
+};

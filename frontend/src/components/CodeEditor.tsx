@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import MonacoEditor from "@monaco-editor/react";
-import { Copy, Check, Expand, Shrink } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Expand,
+  FileCode2,
+  Maximize2,
+  Minimize2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Props = {
@@ -18,6 +25,14 @@ const editorLanguageMap: Record<Props["language"], string> = {
   c: "c",
 };
 
+const languageLabelMap: Record<Props["language"], string> = {
+  javascript: "JavaScript",
+  python: "Python",
+  cpp: "C++",
+  java: "Java",
+  c: "C",
+};
+
 export default function CodeEditor({
   language,
   value,
@@ -31,6 +46,11 @@ export default function CodeEditor({
     return expanded ? "78vh" : height;
   }, [expanded, height]);
 
+  const lineCount = useMemo(() => {
+    if (!value) return 1;
+    return value.split("\n").length;
+  }, [value]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(value || "");
     setCopied(true);
@@ -38,44 +58,58 @@ export default function CodeEditor({
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0b1020] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3 text-xs text-white/70">
-        <div className="flex items-center gap-3">
-          <span className="uppercase tracking-[0.2em]">{language}</span>
-          <span className="rounded-full bg-white/5 px-2 py-1 text-[10px] text-white/60">
-            AlgoForge Editor
-          </span>
-        </div>
+    <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#0b1020] shadow-[0_0_0_1px_rgba(255,255,255,0.04),0_18px_50px_rgba(0,0,0,0.25)]">
+      <div className="border-b border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0.01))] px-4 py-3 text-white/75">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/80">
+              <FileCode2 className="h-3.5 w-3.5 text-primary" />
+              {languageLabelMap[language]}
+            </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={handleCopy}
-            className="h-8 rounded-lg px-3 text-white hover:bg-white/10 hover:text-white"
-          >
-            {copied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
-            {copied ? "Copied" : "Copy"}
-          </Button>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-white/55">
+              AlgoForge Editor
+            </div>
 
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => setExpanded((prev) => !prev)}
-            className="h-8 rounded-lg px-3 text-white hover:bg-white/10 hover:text-white"
-          >
-            {expanded ? (
-              <>
-                <Shrink className="mr-2 h-4 w-4" />
-                Normal
-              </>
-            ) : (
-              <>
-                <Expand className="mr-2 h-4 w-4" />
-                Expand
-              </>
-            )}
-          </Button>
+            <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] text-white/55">
+              {lineCount} lines
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleCopy}
+              className="h-9 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-white hover:bg-white/10 hover:text-white"
+            >
+              {copied ? (
+                <Check className="mr-2 h-4 w-4 text-emerald-400" />
+              ) : (
+                <Copy className="mr-2 h-4 w-4" />
+              )}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setExpanded((prev) => !prev)}
+              className="h-9 rounded-xl border border-white/10 bg-white/[0.03] px-3 text-white hover:bg-white/10 hover:text-white"
+            >
+              {expanded ? (
+                <>
+                  <Minimize2 className="mr-2 h-4 w-4" />
+                  Normal
+                </>
+              ) : (
+                <>
+                  <Maximize2 className="mr-2 h-4 w-4" />
+                  Expand
+                </>
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -100,6 +134,12 @@ export default function CodeEditor({
             tabSize: 2,
             wordWrap: "on",
             smoothScrolling: true,
+            cursorBlinking: "smooth",
+            renderLineHighlight: "line",
+            scrollbar: {
+              verticalScrollbarSize: 10,
+              horizontalScrollbarSize: 10,
+            },
           }}
         />
       </div>

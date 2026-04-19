@@ -2,6 +2,7 @@ import prisma from "../config/db.js";
 import { generateProblemSlug } from "../utils/slug.js";
 import { judgeSubmission } from "./judge.service.js";
 import { buildExecutableCode } from "../utils/codeWrapper.js";
+import { notifyPublishedProblemService } from "./notification.service.js";
 
 const buildProblemData = (payload, creatorUserId, slug) => ({
   title: payload.title.trim(),
@@ -59,6 +60,15 @@ export const createProblemService = async (payload, creatorUserId) => {
     },
   });
 
+  if (problem.isPublished) {
+    await notifyPublishedProblemService({
+      problemId: problem.id,
+      title: problem.title,
+      slug: problem.slug,
+      difficulty: problem.difficulty,
+    });
+  }
+
   return problem;
 };
 
@@ -70,6 +80,7 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
       title: true,
       slug: true,
       createdById: true,
+      isPublished: true,
     },
   });
 
@@ -126,6 +137,15 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
     },
   });
 
+  if (!existing.isPublished && updated.isPublished) {
+    await notifyPublishedProblemService({
+      problemId: updated.id,
+      title: updated.title,
+      slug: updated.slug,
+      difficulty: updated.difficulty,
+    });
+  }
+
   return updated;
 };
 
@@ -177,7 +197,7 @@ export const previewProblemRunService = async ({
   const executableCode = buildExecutableCode({
     language,
     userCode: code,
-    driverCode: driverCode?.[language],
+    driverCode: driverCode?.[language] ?? "",
   });
 
   return judgeSubmission({

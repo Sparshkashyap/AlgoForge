@@ -21,6 +21,7 @@ import dailyQuestionRoutes from "./routes/dailyQuestion.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import billingRoutes from "./routes/billing.routes.js";
 import webhookRoutes from "./routes/webhook.routes.js";
+import contestRoutes from "./routes/contest.routes.js";
 
 import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
@@ -56,6 +57,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// ⚠️ Razorpay webhook MUST come before json parser
 app.use(
   "/api/webhooks/razorpay",
   express.raw({
@@ -64,7 +66,8 @@ app.use(
     verify: (req, _res, buf) => {
       req.rawBody = buf.toString("utf8");
     },
-  })
+  }),
+  webhookRoutes
 );
 
 app.use(express.json({ limit: "2mb" }));
@@ -79,27 +82,28 @@ app.use(
   })
 );
 
-app.get("/", (_req, res) => {
-  return res.status(200).json({
+// Health + root
+app.get("/", (_req, res) =>
+  res.status(200).json({
     success: true,
     message: "AlgoForge API running",
-  });
-});
+  })
+);
 
 app.get("/health", async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "AlgoForge API healthy",
       env: env.NODE_ENV,
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    next(err);
   }
 });
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
@@ -110,8 +114,9 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/daily-question", dailyQuestionRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/billing", billingRoutes);
-app.use("/api/webhooks", webhookRoutes);
+app.use("/api/contests", contestRoutes);
 
+// Error handling
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 

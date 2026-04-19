@@ -1,28 +1,44 @@
 import API from "@/api/axios";
 
-export const signupUser = async (payload: {
+export const signupUserApi = async (payload: {
   name: string;
   email: string;
   password: string;
 }) => {
-  const res = await API.post("/auth/signup", payload);
-  return res.data;
+  try {
+    const res = await API.post("/auth/signup", payload);
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
-export const loginUser = async (payload: {
+export const loginUserApi = async (payload: {
   email: string;
   password: string;
 }) => {
-  const res = await API.post("/auth/login", payload);
-  return res.data;
+  try {
+    const res = await API.post("/auth/login", payload);
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
-export const getMe = async () => {
-  const res = await API.get("/auth/me");
-  return res.data;
+export const getMeApi = async () => {
+  try {
+    const res = await API.get("/auth/me");
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
-export const logoutUser = async () => {
-  const res = await API.post("/auth/logout");
-  return res.data;
+export const logoutUserApi = async () => {
+  try {
+    const res = await API.post("/auth/logout");
+    return res.data;
+  } catch (error: any) {
+    throw error;
+  }
 };

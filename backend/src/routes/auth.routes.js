@@ -1,21 +1,29 @@
 import express from "express";
 import passport from "passport";
 import { validate } from "../middleware/validate.middleware.js";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 import {
   loginController,
   logoutController,
+  meController,
   oauthSuccessController,
   requestPasswordResetController,
   resetPasswordController,
+  requestPasswordResetOtpController,
+  verifyPasswordResetOtpController,
+  resetPasswordWithOtpVerificationController,
   signupController,
 } from "../controllers/auth.controller.js";
 import {
   loginSchema,
   requestPasswordResetSchema,
   resetPasswordSchema,
+  requestPasswordResetOtpSchema,
+  verifyPasswordResetOtpSchema,
+  resetPasswordWithOtpVerificationSchema,
   signupSchema,
 } from "../validations/auth.validation.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import env from "../config/env.js";
 
 const router = express.Router();
 
@@ -32,18 +40,21 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     session: false,
-    failureRedirect: `${process.env.CLIENT_URL}/login?oauth=failed`,
+    failureRedirect: `${env.CLIENT_URL}/login?oauth=failed`,
   }),
   oauthSuccessController
 );
 
-router.get("/github", passport.authenticate("github", { scope: ["user:email"] }));
+router.get(
+  "/github",
+  passport.authenticate("github", { scope: ["user:email"] })
+);
 
 router.get(
   "/github/callback",
   passport.authenticate("github", {
     session: false,
-    failureRedirect: `${process.env.CLIENT_URL}/login?oauth=failed`,
+    failureRedirect: `${env.CLIENT_URL}/login?oauth=failed`,
   }),
   oauthSuccessController
 );
@@ -60,11 +71,24 @@ router.post(
   resetPasswordController
 );
 
-router.get("/me", authMiddleware, async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    data: req.user,
-  });
-});
+router.post(
+  "/forgot-password-otp",
+  validate(requestPasswordResetOtpSchema),
+  requestPasswordResetOtpController
+);
+
+router.post(
+  "/verify-reset-otp",
+  validate(verifyPasswordResetOtpSchema),
+  verifyPasswordResetOtpController
+);
+
+router.post(
+  "/reset-password-with-otp",
+  validate(resetPasswordWithOtpVerificationSchema),
+  resetPasswordWithOtpVerificationController
+);
+
+router.get("/me", authMiddleware, meController);
 
 export default router;

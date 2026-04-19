@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -20,6 +20,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (
+        siteKey: string,
+        options: { action: string }
+      ) => Promise<string>;
+    };
+  }
+}
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -71,10 +85,35 @@ function FloatingOrb({
   );
 }
 
+const loadRecaptcha = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.grecaptcha) {
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector(
+      'script[src^="https://www.google.com/recaptcha/api.js"]'
+    );
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
+    document.body.appendChild(script);
+  });
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, loading } = useAuth();
+  const { login, isAuthenticated, loading, user } = useAuth();
 
   const [form, setForm] = useState({
     email: "",
@@ -86,27 +125,75 @@ export default function Login() {
   const from =
     (location.state as { from?: string } | null)?.from || "/dashboard";
 
+  useEffect(() => {
+    void loadRecaptcha().catch(() => {});
+  }, []);
+
   if (!loading && isAuthenticated) {
     return <Navigate to={from} replace />;
   }
+
+  const getRecaptchaToken = async () => {
+    if (!RECAPTCHA_SITE_KEY) {
+      throw new Error("Missing VITE_RECAPTCHA_SITE_KEY");
+    }
+
+    await loadRecaptcha();
+
+    return new Promise<string>((resolve, reject) => {
+      window.grecaptcha?.ready(async () => {
+        try {
+          const token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, {
+            action: "login",
+          });
+
+          if (!token) {
+            reject(new Error("reCAPTCHA token not generated"));
+            return;
+          }
+
+          resolve(token);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
       setSubmitting(true);
-      await login(form);
+
+      const recaptchaToken = await getRecaptchaToken();
+
+      await login({
+        ...form,
+        recaptchaToken,
+      });
+
       toast.success("Welcome back");
-      navigate(from, { replace: true });
+
+      const role = String(user?.role ?? "");
+      if (role === "ADMIN") {
+        navigate("/admin-dashboard", { replace: true });
+      } else if (role === "CREATOR") {
+        navigate("/creator-dashboard", { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Login failed");
+      toast.error(
+        error?.response?.data?.message || error?.message || "Login failed"
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <FloatingOrb
         delay={0}
         className="absolute left-10 top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
@@ -133,15 +220,15 @@ export default function Login() {
             </div>
 
             <h1 className="mt-8 font-heading text-4xl font-black leading-tight md:text-6xl">
-              Focused practice should look like a product, not a placeholder page.
+              Focused practice should feel like a real product.
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
-              This side should sell the experience. Not with empty text, but with a
-              believable preview of the workspace users are signing into.
+              This side should sell the experience with a believable preview of
+              the workspace users are signing into.
             </p>
 
-            <div className="mt-8 spotlight-card overflow-hidden p-5 md:p-6">
+            <div className="spotlight-card mt-8 overflow-hidden p-5 md:p-6">
               <div className="feature-glow absolute inset-0 opacity-80" />
               <div className="relative z-10">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -168,20 +255,32 @@ export default function Login() {
                     <div className="mt-4 grid gap-3">
                       <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Daily streak</span>
+                          <span className="text-sm text-muted-foreground">
+                            Daily streak
+                          </span>
                           <Target className="h-4 w-4 text-primary" />
                         </div>
-                        <p className="mt-3 font-heading text-3xl font-black">12</p>
-                        <p className="mt-1 text-sm text-muted-foreground">days active</p>
+                        <p className="mt-3 font-heading text-3xl font-black">
+                          12
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          days active
+                        </p>
                       </div>
 
                       <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">Contest rank</span>
+                          <span className="text-sm text-muted-foreground">
+                            Contest rank
+                          </span>
                           <Trophy className="h-4 w-4 text-accent" />
                         </div>
-                        <p className="mt-3 font-heading text-3xl font-black">#214</p>
-                        <p className="mt-1 text-sm text-muted-foreground">this week</p>
+                        <p className="mt-3 font-heading text-3xl font-black">
+                          #214
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          this week
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -189,12 +288,14 @@ export default function Login() {
                   <div className="rounded-[1.5rem] border border-border/70 bg-background/50 p-4">
                     <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">AI Hint Preview</span>
+                        <span className="text-sm font-semibold">
+                          AI Hint Preview
+                        </span>
                         <BrainCircuit className="h-4 w-4 text-primary" />
                       </div>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        “Try tracking frequency while scanning once, instead of sorting
-                        first.”
+                        “Try tracking frequency while scanning once, instead of
+                        sorting first.”
                       </p>
                     </div>
 
@@ -227,29 +328,33 @@ export default function Login() {
                         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
                           Interview focus
                         </p>
-                        <p className="mt-2 text-xl font-bold">Arrays + Graphs</p>
+                        <p className="mt-2 text-xl font-bold">
+                          Arrays + Graphs
+                        </p>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {["Focused practice", "Real progress visibility", "Interview-first workflow"].map(
-                    (item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                      >
-                        {item}
-                      </span>
-                    )
-                  )}
+                  {[
+                    "Focused practice",
+                    "Real progress visibility",
+                    "Interview-first workflow",
+                  ].map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </motion.div>
 
-          <motion.div className="w-full max-w-md ml-auto" {...fadeUp(0.08)}>
+          <motion.div className="ml-auto w-full max-w-md" {...fadeUp(0.08)}>
             <div className="spotlight-card overflow-hidden p-7 md:p-8">
               <div className="feature-glow absolute inset-0 opacity-80" />
               <div className="relative z-10">
@@ -333,7 +438,10 @@ export default function Login() {
                         className="h-12 rounded-2xl border-border/70 bg-background/50 pr-12"
                         value={form.password}
                         onChange={(e) =>
-                          setForm((prev) => ({ ...prev, password: e.target.value }))
+                          setForm((prev) => ({
+                            ...prev,
+                            password: e.target.value,
+                          }))
                         }
                         required
                       />
@@ -379,6 +487,26 @@ export default function Login() {
                     Create one
                   </Link>
                 </p>
+
+                <div className="mt-6 rounded-2xl border border-border/70 bg-background/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      One login flow is enough. Role-based redirect should happen
+                      after authentication, not through separate login pages.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 rounded-2xl border border-border/70 bg-background/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      This login is protected with reCAPTCHA to reduce abuse and
+                      bot-based sign-in attempts.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>

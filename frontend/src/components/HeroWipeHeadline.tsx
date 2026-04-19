@@ -15,7 +15,6 @@ export default function HeroWipeHeadline() {
     mass: 0.32,
   });
 
-  // tighter center-focused wipe
   const algoClip = useTransform(
     smooth,
     [0, 0.35, 0.5, 0.65, 1],
@@ -55,23 +54,36 @@ export default function HeroWipeHeadline() {
   return (
     <div
       ref={ref}
-      className="relative mx-auto flex w-full items-center justify-center overflow-visible px-4 sm:px-6 md:min-h-[320px] lg:min-h-[380px]"
+      className="relative mx-auto flex w-full items-center justify-center overflow-visible px-4 sm:px-6 md:min-h-[260px] lg:min-h-[380px]"
     >
       <div className="hero-center-glow absolute inset-0 z-0" />
 
-      <motion.h1
-        style={{ clipPath: algoClip, opacity: algoOpacity }}
-        className="hero-brand-title hero-animated-gradient absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 px-4 text-center font-heading text-[4.6rem] font-extrabold uppercase sm:text-[6.4rem] md:text-[8.2rem] lg:text-[10rem] xl:text-[11.2rem] 2xl:text-[12.5rem]"
-      >
-        ALGOFORGE
-      </motion.h1>
+      <div className="relative z-30 flex w-full items-center justify-center md:hidden">
+        <div className="hero-mobile-typing-wrap">
+          <span className="hero-mobile-word hero-mobile-word-algo hero-animated-gradient">
+            ALGOFORGE
+          </span>
+          <span className="hero-mobile-word hero-mobile-word-erudition hero-animated-gradient">
+            ERUDITION
+          </span>
+        </div>
+      </div>
 
-      <motion.h1
-        style={{ clipPath: eruditionClip, opacity: eruditionOpacity }}
-        className="hero-brand-title hero-brand-title-soft hero-animated-gradient absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 px-4 text-center font-heading text-[4.6rem] font-extrabold uppercase sm:text-[6.4rem] md:text-[8.2rem] lg:text-[10rem] xl:text-[11.2rem] 2xl:text-[12.5rem]"
-      >
-        ERUDITION
-      </motion.h1>
+      <div className="hidden md:block">
+        <motion.h1
+          style={{ clipPath: algoClip, opacity: algoOpacity }}
+          className="hero-brand-title hero-animated-gradient absolute left-1/2 top-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-center font-heading text-[3rem] font-extrabold uppercase sm:text-[4.8rem] md:text-[8.2rem] lg:text-[10rem] xl:text-[11.2rem] 2xl:text-[12.5rem]"
+        >
+          ALGOFORGE
+        </motion.h1>
+
+        <motion.h1
+          style={{ clipPath: eruditionClip, opacity: eruditionOpacity }}
+          className="hero-brand-title hero-brand-title-soft hero-animated-gradient absolute left-1/2 top-1/2 z-20 -translate-x-1/2 -translate-y-1/2 text-center font-heading text-[3rem] font-extrabold uppercase sm:text-[4.8rem] md:text-[8.2rem] lg:text-[10rem] xl:text-[11.2rem] 2xl:text-[12.5rem]"
+        >
+          ERUDITION
+        </motion.h1>
+      </div>
     </div>
   );
 }

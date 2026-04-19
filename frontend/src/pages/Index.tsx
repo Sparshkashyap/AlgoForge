@@ -68,65 +68,67 @@ export default function Index() {
         <HeroOrbBackground />
 
         <section className="relative">
-          <div className="container relative z-10 pt-24 pb-16 md:pt-32 md:pb-24">
+          <div className="container relative z-10 pt-20 pb-14 sm:pt-24 md:pt-32 md:pb-24">
             <motion.div
               initial={{ opacity: 0, y: 26 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: "easeOut" }}
+              transition={{ duration: 0.7 }}
               className="mx-auto max-w-7xl"
             >
               <div className="mx-auto max-w-5xl text-center">
-                <div className="hero-chip text-[0.9rem] font-semibold tracking-[0.18em] md:text-[1rem]">
-  <Sparkles className="h-4 w-4 text-pink-400" />
-  <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-    serious prep, stronger product direction
-  </span>
-</div>
+                <div className="hero-chip mx-auto w-fit max-w-full text-[0.72rem] font-semibold leading-5 tracking-[0.12em] sm:text-[0.82rem] md:text-[1rem] md:tracking-[0.18em]">
+                  <Sparkles className="h-4 w-4 shrink-0 text-pink-400" />
+                  <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                    serious prep, stronger product direction
+                  </span>
+                </div>
 
-<p className="mt-8 text-[1.05rem] font-medium uppercase tracking-[0.18em] md:text-[1.2rem]">
-  <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
-    Practice sharper. Think cleaner. Perform harder.
-  </span>
-</p>
+                <p className="mt-7 px-2 text-[0.9rem] font-medium uppercase leading-7 tracking-[0.12em] sm:text-[1rem] md:text-[1.2rem] md:tracking-[0.18em]">
+                  <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                    Practice sharper. Think cleaner. Perform harder.
+                  </span>
+                </p>
 
-                <div className="mt-3">
+                <div className="mt-4">
                   <HeroWipeHeadline />
                 </div>
 
-                <p className="mx-auto mt-4 max-w-3xl text-base leading-8 text-muted-foreground md:text-xl md:leading-9">
+                <p className="mx-auto mt-4 max-w-3xl px-3 text-base leading-8 text-muted-foreground sm:px-6 md:text-xl md:leading-9">
                   A coding prep platform that feels focused from the first
-                  scroll. Better hierarchy, cleaner workflows, more believable
-                  product depth, and a UI that stops looking like every other
-                  clone.
+                  scroll. Better hierarchy, cleaner workflows, and a UI that
+                  doesn’t look like every other clone.
                 </p>
 
-                <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                  <Link to={isAuthenticated ? "/dashboard" : "/signup"}>
+                <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+                  <Link
+                    to={isAuthenticated ? "/dashboard" : "/signup"}
+                    className="w-full sm:w-auto"
+                  >
                     <Button
                       size="lg"
-                      className="group rounded-full px-8 py-6 text-base font-semibold shadow-[0_16px_60px_rgba(100,90,255,0.28)]"
+                      className="group h-14 w-full rounded-full px-8 text-base sm:w-auto sm:px-8 sm:py-6"
                     >
                       {isAuthenticated ? "Open Dashboard" : "Start Practicing"}
-                      <ArrowRight className="ml-2 h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+                      <ArrowRight className="ml-2 h-4 w-4 transition group-hover:translate-x-1" />
                     </Button>
                   </Link>
 
-                  <Link to="/problems">
+                  <Link to="/problems" className="w-full sm:w-auto">
                     <Button
                       size="lg"
                       variant="outline"
-                      className="rounded-full border-border/80 bg-background/40 px-8 py-6 text-base backdrop-blur-xl"
+                      className="h-14 w-full rounded-full px-8 sm:w-auto sm:py-6"
                     >
                       Browse Problems
                     </Button>
                   </Link>
                 </div>
 
-                <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                <div className="mt-8 flex flex-wrap justify-center gap-3 px-2">
                   {proofChips.map((chip) => (
                     <span
                       key={chip}
-                      className="rounded-full border border-border/70 bg-card/62 px-4 py-2 text-xs uppercase tracking-[0.2em] text-muted-foreground backdrop-blur-xl"
+                      className="rounded-full border border-border/70 bg-card/62 px-4 py-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground sm:text-xs sm:tracking-[0.2em]"
                     >
                       {chip}
                     </span>
@@ -138,76 +140,38 @@ export default function Index() {
                 <motion.div
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.25 }}
-                  transition={{ duration: 0.45 }}
-                  className="spotlight-card surface-line overflow-hidden p-6 md:p-8"
+                  viewport={{ once: true }}
+                  className="spotlight-card p-6 md:p-8"
                 >
                   <div className="feature-glow absolute inset-0 opacity-80" />
                   <div className="relative z-10">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-primary/80">
-                          Product preview
-                        </p>
-                        <h3 className="mt-3 font-heading text-3xl font-black leading-tight md:text-4xl">
-                          Cleaner practice flow.
-                          <span className="block text-muted-foreground">
-                            Stronger product signals.
-                          </span>
-                        </h3>
-                      </div>
+                    <h3 className="font-heading text-3xl font-black md:text-4xl">
+                      Cleaner practice flow.
+                    </h3>
 
-                      <div className="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-primary">
-                        serious workflow
-                      </div>
-                    </div>
-
-                    <div className="hero-preview-grid mt-8 rounded-[1.7rem] border border-border/70 bg-background/40 p-4 md:p-5">
-                      <div className="grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
-                        <div className="rounded-[1.4rem] border border-border/70 bg-card/80 p-5">
-                          <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                            session focus
-                          </p>
-                          <div className="mt-5 space-y-3">
-                            {promisePoints.map((item) => (
-                              <div
-                                key={item}
-                                className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/45 px-4 py-3 text-sm"
-                              >
-                                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                                <span className="text-foreground/92">
-                                  {item}
-                                </span>
-                              </div>
-                            ))}
+                    <div className="mt-6 grid gap-4 md:grid-cols-[0.9fr_1.1fr]">
+                      <div className="space-y-3">
+                        {promisePoints.map((item) => (
+                          <div key={item} className="flex gap-3 text-sm">
+                            <CheckCircle2 className="mt-1 h-4 w-4 shrink-0 text-primary" />
+                            {item}
                           </div>
-                        </div>
+                        ))}
+                      </div>
 
-                        <div className="grid gap-4">
-                          {previewPoints.map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <div
-                                key={item.title}
-                                className="rounded-[1.4rem] border border-border/70 bg-card/80 p-5"
-                              >
-                                <div className="flex items-start gap-4">
-                                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[1rem] border border-white/10 bg-gradient-to-br from-primary/22 to-accent/12 text-primary">
-                                    <Icon className="h-5 w-5" />
-                                  </div>
-                                  <div>
-                                    <p className="font-semibold">
-                                      {item.title}
-                                    </p>
-                                    <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                                      {item.copy}
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                      <div className="grid gap-4">
+                        {previewPoints.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <div key={item.title} className="rounded-xl border p-4">
+                              <Icon className="h-5 w-5 text-primary" />
+                              <p className="mt-2 font-semibold">{item.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {item.copy}
+                              </p>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -216,47 +180,14 @@ export default function Index() {
                 <motion.div
                   initial={{ opacity: 0, y: 24 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.25 }}
-                  transition={{ duration: 0.45, delay: 0.06 }}
-                  className="grid gap-5"
+                  viewport={{ once: true }}
+                  className="space-y-5"
                 >
-                  <div className="spotlight-card p-6 md:p-7">
-                    <div className="feature-glow absolute inset-0 opacity-75" />
-                    <div className="relative z-10">
-                      <ShieldCheck className="h-5 w-5 text-primary" />
-                      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.26em] text-primary/80">
-                        Built for trust
-                      </p>
-                      <h3 className="mt-3 font-heading text-2xl font-black leading-tight md:text-3xl">
-                        A homepage should sell confidence, not just aesthetics.
-                      </h3>
-                      <p className="mt-4 text-sm leading-7 text-muted-foreground">
-                        Users should understand why the platform feels better
-                        within seconds, not only after clicking around.
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
-                    {[
-                      {
-                        title: "Sharper hierarchy",
-                        copy: "Hero, preview, proof, features, and CTA now feel like a story.",
-                      },
-                      {
-                        title: "Less repetitive cards",
-                        copy: "One strong spotlight beats six equal blocks fighting for attention.",
-                      },
-                    ].map((item) => (
-                      <div key={item.title} className="metric-card">
-                        <p className="text-xs uppercase tracking-[0.26em] text-muted-foreground">
-                          {item.title}
-                        </p>
-                        <p className="mt-3 text-sm leading-7 text-foreground/90">
-                          {item.copy}
-                        </p>
-                      </div>
-                    ))}
+                  <div className="spotlight-card p-6">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    <h3 className="mt-3 text-2xl font-bold">
+                      Product should feel credible fast.
+                    </h3>
                   </div>
                 </motion.div>
               </div>
@@ -264,25 +195,15 @@ export default function Index() {
           </div>
         </section>
 
-        <section className="relative z-10 border-y border-border/60 bg-card/35 backdrop-blur-xl">
-          <div className="container py-10 md:py-14">
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {stats.map((item, index) => (
-                <motion.div
-                  key={item.label}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.35 }}
-                  transition={{ duration: 0.45, delay: index * 0.08 }}
-                >
-                  <HeroCounter {...item} />
-                </motion.div>
-              ))}
-            </div>
+        <section className="border-y border-border/60 bg-card/35">
+          <div className="container grid gap-4 py-10 md:grid-cols-2 md:py-14 xl:grid-cols-4">
+            {stats.map((item) => (
+              <HeroCounter key={item.label} {...item} />
+            ))}
           </div>
         </section>
 
-        <section className="container relative z-10 py-20 md:py-28">
+        <section className="container py-20 md:py-28">
           <FeatureShowcase />
         </section>
 
@@ -292,55 +213,21 @@ export default function Index() {
           </div>
         </section>
 
-        <section className="container relative z-10 py-20 md:py-28">
-          <motion.div
-            initial={{ opacity: 0, y: 22 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 0.55 }}
-            className="spotlight-card overflow-hidden p-8 text-center md:p-14"
-          >
-            <div className="feature-glow absolute inset-0 opacity-80" />
-            <div className="relative z-10">
-              <p className="section-label">
-                Ready to turn polish into product depth?
-              </p>
+        <section className="container py-20 md:py-28">
+          <div className="spotlight-card p-10 text-center">
+            <h2 className="text-4xl font-black">
+              Make the product feel inevitable.
+            </h2>
 
-              <h2 className="mx-auto mt-4 max-w-4xl font-heading text-4xl font-black leading-tight md:text-6xl">
-                Make the first impression feel expensive.
-                <span className="block text-muted-foreground">
-                  Then back it up with execution.
-                </span>
-              </h2>
-
-              <p className="mx-auto mt-5 max-w-2xl text-sm leading-8 text-muted-foreground md:text-lg">
-                The front face now looks more intentional. Next step is carrying
-                the same design confidence through auth, dashboard, and the
-                actual problem solving experience.
-              </p>
-
-              <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link to={isAuthenticated ? "/dashboard" : "/signup"}>
-                  <Button
-                    size="lg"
-                    className="rounded-full px-8 py-6 text-base"
-                  >
-                    {isAuthenticated ? "Open Dashboard" : "Create Account"}
-                  </Button>
-                </Link>
-
-                <Link to="/pricing">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="rounded-full px-8 py-6 text-base"
-                  >
-                    View Pricing
-                  </Button>
-                </Link>
-              </div>
+            <div className="mt-6 flex flex-col justify-center gap-4 sm:flex-row">
+              <Link to={isAuthenticated ? "/dashboard" : "/signup"}>
+                <Button>Create Account</Button>
+              </Link>
+              <Link to="/pricing">
+                <Button variant="outline">View Pricing</Button>
+              </Link>
             </div>
-          </motion.div>
+          </div>
         </section>
       </main>
 

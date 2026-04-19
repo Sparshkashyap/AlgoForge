@@ -34,7 +34,7 @@ export default function Profile() {
 
   const initials = useMemo(
     () => getInitials(user?.name, user?.email),
-    [user?.email, user?.name]
+    [user]
   );
 
   if (!user) {

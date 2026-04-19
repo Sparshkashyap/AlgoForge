@@ -1,37 +1,126 @@
-import { useMemo, useState } from "react";
-import { useSearchParams, useNavigate, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  KeyRound,
-  ShieldCheck,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
+
 import { Navbar } from "@/components/Navbar";
-import { resetPasswordApi } from "@/api/auth.api";
+import { resetPasswordApi, verifyResetOtpApi } from "@/api/auth.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "react-toastify";
 
-export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
-  const token = useMemo(() => searchParams.get("token") || "", [searchParams]);
-  const [password, setPassword] = useState("");
-  const [saving, setSaving] = useState(false);
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (siteKey: string, options: { action: string }) => Promise<string>;
+    };
+  }
+}
 
-  const handleSubmit = async (e: React.FormEvent) => {
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+
+const loadRecaptcha = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.grecaptcha) return resolve();
+
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
+
+    document.body.appendChild(script);
+  });
+
+export default function ResetPassword() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const initialEmail = useMemo(() => {
+    return (location.state as { email?: string } | null)?.email || "";
+  }, [location.state]);
+
+  const [step, setStep] = useState<"otp" | "password">("otp");
+  const [email, setEmail] = useState(initialEmail);
+  const [otp, setOtp] = useState("");
+  const [verificationToken, setVerificationToken] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    loadRecaptcha().catch(() => {});
+  }, []);
+
+  const getRecaptchaToken = async () => {
+    if (!RECAPTCHA_SITE_KEY) throw new Error("Missing reCAPTCHA key");
+
+    await loadRecaptcha();
+
+    return new Promise<string>((resolve, reject) => {
+      window.grecaptcha?.ready(async () => {
+        try {
+          const token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, {
+            action: "verify_reset_otp",
+          });
+          if (!token) return reject("No token");
+          resolve(token);
+        } catch (e) {
+          reject(e);
+        }
+      });
+    });
+  };
+
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      setSaving(true);
-      const data = await resetPasswordApi({ token, password });
-      toast.success(data.message || "Password reset successful");
-      navigate("/login");
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Reset failed");
+      setLoading(true);
+      const recaptchaToken = await getRecaptchaToken();
+
+      const data = await verifyResetOtpApi({
+        email,
+        otp,
+        recaptchaToken,
+      });
+
+      setVerificationToken(data.verificationToken || data.data?.verificationToken);
+      setStep("password");
+
+      toast.success("OTP verified");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "OTP failed");
     } finally {
-      setSaving(false);
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      await resetPasswordApi({
+        verificationToken,
+        password,
+        confirmPassword,
+      });
+
+      toast.success("Password reset successful");
+      navigate("/login");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Reset failed");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -42,94 +131,85 @@ export default function ResetPassword() {
       <motion.div
         initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.28 }}
         className="container py-12 md:py-16"
       >
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-xl">
-              <Sparkles className="h-3.5 w-3.5 text-primary" />
-              Final recovery step
+        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-2">
+          {/* LEFT UI */}
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-xs">
+              <Sparkles className="h-3 w-3" />
+              Secure Recovery
             </div>
 
-            <h1 className="mt-8 font-heading text-4xl font-black leading-tight md:text-6xl">
-              Set a new password and get back to work.
+            <h1 className="mt-6 text-4xl font-black">
+              Reset your password securely
             </h1>
 
-            <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
-              The reset step should feel just as clean as the rest of the product.
-              Keep it simple, update the password, and move straight back into login.
-            </p>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <div className="p-4 border rounded-xl">
+                <KeyRound />
+                <p className="mt-2 font-semibold">OTP Verification</p>
+              </div>
 
-            <div className="mt-8 spotlight-card overflow-hidden p-5 md:p-6">
-              <div className="feature-glow absolute inset-0 opacity-80" />
-              <div className="relative z-10 grid gap-4 sm:grid-cols-2">
-                <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-5">
-                  <KeyRound className="h-5 w-5 text-primary" />
-                  <p className="mt-4 text-lg font-semibold">New password</p>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    Set a secure new password that you can use immediately on login.
-                  </p>
-                </div>
-
-                <div className="rounded-[1.5rem] border border-border/70 bg-background/45 p-5">
-                  <ShieldCheck className="h-5 w-5 text-accent" />
-                  <p className="mt-4 text-lg font-semibold">Secure token flow</p>
-                  <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                    This screen is only meaningful when opened through the reset token link.
-                  </p>
-                </div>
+              <div className="p-4 border rounded-xl">
+                <ShieldCheck />
+                <p className="mt-2 font-semibold">Secure Reset</p>
               </div>
             </div>
           </div>
 
-          <div className="mx-auto w-full max-w-md">
-            <div className="spotlight-card p-8">
-              <div className="relative z-10">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to login
-                </Link>
+          {/* RIGHT FORM */}
+          <div className="max-w-md w-full mx-auto border p-6 rounded-2xl">
+            <Link to="/login" className="text-sm flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" /> Back
+            </Link>
 
-                <h2 className="mt-6 font-heading text-3xl font-black">
-                  Reset Password
-                </h2>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Set a new password for your account.
-                </p>
+            <h2 className="mt-4 text-2xl font-bold">Reset Password</h2>
 
-                <form onSubmit={handleSubmit} className="mt-6 space-y-5">
-                  <div>
-                    <label className="text-sm font-medium">New Password</label>
-                    <Input
-                      className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
-                      type="password"
-                      placeholder="Create a new password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                    />
-                  </div>
+            {step === "otp" ? (
+              <form onSubmit={handleVerifyOtp} className="mt-4 space-y-4">
+                <Input
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
 
-                  <Button
-                    type="submit"
-                    disabled={saving || !token}
-                    className="h-12 w-full rounded-2xl"
-                  >
-                    {saving ? "Saving..." : "Reset Password"}
-                  </Button>
+                <Input
+                  placeholder="OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  maxLength={6}
+                  required
+                />
 
-                  {!token && (
-                    <p className="text-sm text-rose-400">
-                      Reset token is missing or invalid.
-                    </p>
-                  )}
-                </form>
-              </div>
-            </div>
+                <Button disabled={loading} className="w-full">
+                  {loading ? "Verifying..." : "Verify OTP"}
+                </Button>
+              </form>
+            ) : (
+              <form onSubmit={handleResetPassword} className="mt-4 space-y-4">
+                <Input
+                  type="password"
+                  placeholder="New Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+
+                <Input
+                  type="password"
+                  placeholder="Confirm Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                />
+
+                <Button disabled={loading} className="w-full">
+                  {loading ? "Saving..." : "Reset Password"}
+                </Button>
+              </form>
+            )}
           </div>
         </div>
       </motion.div>

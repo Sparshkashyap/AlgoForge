@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -9,6 +9,7 @@ import {
   Github,
   Loader2,
   Rocket,
+  ShieldCheck,
   Sparkles,
   Star,
   Target,
@@ -20,6 +21,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
+
+declare global {
+  interface Window {
+    grecaptcha?: {
+      ready: (cb: () => void) => void;
+      execute: (
+        siteKey: string,
+        options: { action: string }
+      ) => Promise<string>;
+    };
+  }
+}
+
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -71,6 +86,31 @@ function FloatingOrb({
   );
 }
 
+const loadRecaptcha = () =>
+  new Promise<void>((resolve, reject) => {
+    if (window.grecaptcha) {
+      resolve();
+      return;
+    }
+
+    const existing = document.querySelector(
+      'script[src^="https://www.google.com/recaptcha/api.js"]'
+    );
+
+    if (existing) {
+      existing.addEventListener("load", () => resolve(), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
+    document.body.appendChild(script);
+  });
+
 export default function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -87,27 +127,67 @@ export default function Signup() {
   const from =
     (location.state as { from?: string } | null)?.from || "/dashboard";
 
+  useEffect(() => {
+    void loadRecaptcha().catch(() => {});
+  }, []);
+
   if (!loading && isAuthenticated) {
     return <Navigate to={from} replace />;
   }
+
+  const getRecaptchaToken = async () => {
+    if (!RECAPTCHA_SITE_KEY) {
+      throw new Error("Missing VITE_RECAPTCHA_SITE_KEY");
+    }
+
+    await loadRecaptcha();
+
+    return new Promise<string>((resolve, reject) => {
+      window.grecaptcha?.ready(async () => {
+        try {
+          const token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, {
+            action: "signup",
+          });
+
+          if (!token) {
+            reject(new Error("reCAPTCHA token not generated"));
+            return;
+          }
+
+          resolve(token);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  };
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     try {
       setSubmitting(true);
-      await signup(form);
+
+      const recaptchaToken = await getRecaptchaToken();
+
+      await signup({
+        ...form,
+        recaptchaToken,
+      });
+
       toast.success("Account created");
       navigate(from, { replace: true });
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Signup failed");
+      toast.error(
+        error?.response?.data?.message || error?.message || "Signup failed"
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       <FloatingOrb
         delay={0}
         className="absolute left-10 top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
@@ -138,8 +218,8 @@ export default function Signup() {
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
-              Signup pages should not be dead air. Show the workflow, prove the value,
-              and make the next screen feel worth reaching.
+              Signup pages should not be dead air. Show the workflow, prove the
+              value, and make the next screen feel worth reaching.
             </p>
 
             <div className="mt-8 spotlight-card overflow-hidden p-5 md:p-6">
@@ -164,20 +244,29 @@ export default function Signup() {
                   <div className="rounded-[1.5rem] border border-border/70 bg-background/50 p-4">
                     <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Weekly target</span>
+                        <span className="text-sm text-muted-foreground">
+                          Weekly target
+                        </span>
                         <Target className="h-4 w-4 text-primary" />
                       </div>
-                      <p className="mt-3 font-heading text-3xl font-black">5 / 7</p>
-                      <p className="mt-1 text-sm text-muted-foreground">practice goals hit</p>
+                      <p className="mt-3 font-heading text-3xl font-black">
+                        5 / 7
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        practice goals hit
+                      </p>
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Creator picks</span>
+                        <span className="text-sm text-muted-foreground">
+                          Creator picks
+                        </span>
                         <Star className="h-4 w-4 text-accent" />
                       </div>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        Curated sets that feel like deliberate prep instead of random volume.
+                        Curated sets that feel like deliberate prep instead of
+                        random volume.
                       </p>
                     </div>
                   </div>
@@ -189,14 +278,16 @@ export default function Signup() {
                         <BrainCircuit className="h-4 w-4 text-primary" />
                       </div>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        “Think about what state has to survive across the scan, not just
-                        the current index.”
+                        “Think about what state has to survive across the scan,
+                        not just the current index.”
                       </p>
                     </div>
 
                     <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Momentum</span>
+                        <span className="text-sm text-muted-foreground">
+                          Momentum
+                        </span>
                         <Rocket className="h-4 w-4 text-primary" />
                       </div>
                       <div className="mt-4 flex gap-2">
@@ -217,22 +308,24 @@ export default function Signup() {
                 </div>
 
                 <div className="mt-5 flex flex-wrap gap-3">
-                  {["Cleaner onboarding", "Real dashboard value", "Built for retention"].map(
-                    (item) => (
-                      <span
-                        key={item}
-                        className="rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                      >
-                        {item}
-                      </span>
-                    )
-                  )}
+                  {[
+                    "Cleaner onboarding",
+                    "Real dashboard value",
+                    "Built for retention",
+                  ].map((item) => (
+                    <span
+                      key={item}
+                      className="rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted-foreground"
+                    >
+                      {item}
+                    </span>
+                  ))}
                 </div>
               </div>
             </div>
           </motion.div>
 
-          <motion.div className="w-full max-w-md ml-auto" {...fadeUp(0.08)}>
+          <motion.div className="ml-auto w-full max-w-md" {...fadeUp(0.08)}>
             <div className="spotlight-card overflow-hidden p-7 md:p-8">
               <div className="feature-glow absolute inset-0 opacity-80" />
               <div className="relative z-10">
@@ -322,7 +415,10 @@ export default function Signup() {
                         className="h-12 rounded-2xl border-border/70 bg-background/50 pr-12"
                         value={form.password}
                         onChange={(e) =>
-                          setForm((prev) => ({ ...prev, password: e.target.value }))
+                          setForm((prev) => ({
+                            ...prev,
+                            password: e.target.value,
+                          }))
                         }
                         required
                       />
@@ -368,6 +464,16 @@ export default function Signup() {
                     Sign in
                   </Link>
                 </p>
+
+                <div className="mt-6 rounded-2xl border border-border/70 bg-background/50 p-4">
+                  <div className="flex items-start gap-3">
+                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                    <p className="text-sm leading-7 text-muted-foreground">
+                      Signup is protected with reCAPTCHA to reduce abuse and
+                      automated account creation.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </motion.div>

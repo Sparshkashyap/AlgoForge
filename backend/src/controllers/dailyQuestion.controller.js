@@ -1,15 +1,15 @@
 import {
-  getDailyQuestionService,
+  getActiveDailyQuestionService,
   markDailyQuestionAttemptService,
 } from "../services/dailyQuestion.service.js";
 
-export const getDailyQuestionController = async (req, res, next) => {
+export const getActiveDailyQuestionController = async (_req, res, next) => {
   try {
-    const data = await getDailyQuestionService(req.user?.userId || null);
+    const dailyQuestion = await getActiveDailyQuestionService();
 
     return res.status(200).json({
       success: true,
-      data,
+      data: dailyQuestion,
     });
   } catch (error) {
     next(error);
@@ -18,15 +18,16 @@ export const getDailyQuestionController = async (req, res, next) => {
 
 export const markDailyQuestionAttemptController = async (req, res, next) => {
   try {
-    const result = await markDailyQuestionAttemptService({
+    const attempt = await markDailyQuestionAttemptService({
       userId: req.user.userId,
-      dailyQuestionId: req.body.dailyQuestionId,
-      status: req.body.status,
+      dailyQuestionId: req.validated.body.dailyQuestionId,
+      status: req.validated.body.status,
     });
 
     return res.status(200).json({
       success: true,
-      data: result,
+      message: "Daily question attempt saved",
+      data: attempt,
     });
   } catch (error) {
     next(error);

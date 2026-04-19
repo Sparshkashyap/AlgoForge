@@ -9,18 +9,34 @@ interface NavLinkCompatProps extends Omit<NavLinkProps, "className"> {
 }
 
 const NavLink = forwardRef<HTMLAnchorElement, NavLinkCompatProps>(
-  ({ className, activeClassName, pendingClassName, to, ...props }, ref) => {
+  (
+    {
+      className,
+      activeClassName,
+      pendingClassName,
+      to,
+      end,
+      ...props
+    },
+    ref
+  ) => {
     return (
       <RouterNavLink
         ref={ref}
         to={to}
+        end={end}
         className={({ isActive, isPending }) =>
-          cn(className, isActive && activeClassName, isPending && pendingClassName)
+          cn(
+            "transition-colors duration-200",
+            className,
+            isActive && activeClassName,
+            isPending && pendingClassName
+          )
         }
         {...props}
       />
     );
-  },
+  }
 );
 
 NavLink.displayName = "NavLink";

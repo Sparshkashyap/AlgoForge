@@ -8,18 +8,42 @@ export default function BillingSummary({
   currentPeriodEnd?: string | null;
 }) {
   return (
-    <div className="rounded-3xl border border-border bg-card p-6">
-      <h3 className="font-heading text-xl font-semibold">Current Billing</h3>
-      <p className="mt-4 text-sm text-muted-foreground">Plan</p>
-      <p className="mt-1 text-2xl font-bold">{plan || "FREE"}</p>
+    <div className="rounded-[1.8rem] border border-border/70 bg-card/85 p-6 backdrop-blur-xl space-y-5">
+      
+      <h3 className="font-heading text-xl font-bold">
+        Billing Overview
+      </h3>
 
-      <p className="mt-4 text-sm text-muted-foreground">Status</p>
-      <p className="mt-1 text-lg font-semibold">{status || "inactive"}</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="rounded-xl border border-border/70 p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-[0.12em]">
+            Plan
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {plan || "FREE"}
+          </p>
+        </div>
 
-      <p className="mt-4 text-sm text-muted-foreground">Period End</p>
-      <p className="mt-1 text-lg font-semibold">
-        {currentPeriodEnd ? new Date(currentPeriodEnd).toLocaleDateString() : "-"}
-      </p>
+        <div className="rounded-xl border border-border/70 p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-[0.12em]">
+            Status
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {status || "inactive"}
+          </p>
+        </div>
+
+        <div className="col-span-2 rounded-xl border border-border/70 p-4">
+          <p className="text-xs text-muted-foreground uppercase tracking-[0.12em]">
+            Billing Period Ends
+          </p>
+          <p className="mt-2 text-lg font-semibold">
+            {currentPeriodEnd
+              ? new Date(currentPeriodEnd).toLocaleDateString()
+              : "-"}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

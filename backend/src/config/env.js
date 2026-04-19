@@ -6,7 +6,7 @@ const env = {
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:5173",
 
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
-GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
 
   DATABASE_URL: process.env.DATABASE_URL || "",
   DIRECT_URL: process.env.DIRECT_URL || "",
@@ -19,34 +19,45 @@ GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
   JUDGE0_API_KEY: process.env.JUDGE0_API_KEY || "",
 
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",
-GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
-GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || "",
+  GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || "",
+  GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || "",
 
-GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || "",
-GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || "",
-GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || "",
+  GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID || "",
+  GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET || "",
+  GITHUB_CALLBACK_URL: process.env.GITHUB_CALLBACK_URL || "",
 
-SESSION_SECRET: process.env.SESSION_SECRET || "",
+  SESSION_SECRET: process.env.SESSION_SECRET || "",
 
-BREVO_SMTP_HOST: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
-BREVO_SMTP_PORT: Number(process.env.BREVO_SMTP_PORT || 587),
-BREVO_SMTP_USER: process.env.BREVO_SMTP_USER || "",
-BREVO_SMTP_PASS: process.env.BREVO_SMTP_PASS || "",
-BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL || "",
-BREVO_FROM_NAME: process.env.BREVO_FROM_NAME || "AlgoForge",
-PASSWORD_RESET_BASE_URL: process.env.PASSWORD_RESET_BASE_URL || "http://localhost:5173/reset-password",
+  BREVO_SMTP_HOST: process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com",
+  BREVO_SMTP_PORT: Number(process.env.BREVO_SMTP_PORT || 587),
+  BREVO_SMTP_USER: process.env.BREVO_SMTP_USER || "",
+  BREVO_SMTP_PASS: process.env.BREVO_SMTP_PASS || "",
+  BREVO_FROM_EMAIL: process.env.BREVO_FROM_EMAIL || "",
+  BREVO_FROM_NAME: process.env.BREVO_FROM_NAME || "AlgoForge",
+  PASSWORD_RESET_BASE_URL:
+    process.env.PASSWORD_RESET_BASE_URL || "http://localhost:5173/reset-password",
 
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
+  RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
+  RAZORPAY_STANDARD_PLAN_ID: process.env.RAZORPAY_STANDARD_PLAN_ID || "",
+  RAZORPAY_PRO_PLAN_ID: process.env.RAZORPAY_PRO_PLAN_ID || "",
 
-RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",
-RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
-RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
-RAZORPAY_STANDARD_PLAN_ID: process.env.RAZORPAY_STANDARD_PLAN_ID || "",
-RAZORPAY_PRO_PLAN_ID: process.env.RAZORPAY_PRO_PLAN_ID || "",
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
+  CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
+  CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
 
-CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
-CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
-CLOUDINARY_API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
+  RECAPTCHA_SECRET_KEY: process.env.RECAPTCHA_SECRET_KEY || "",
+  RECAPTCHA_SITE_KEY: process.env.RECAPTCHA_SITE_KEY || "",
+  RECAPTCHA_MIN_SCORE: Number(process.env.RECAPTCHA_MIN_SCORE || 0.5),
 
+  OTP_EXPIRY_MINUTES: Number(process.env.OTP_EXPIRY_MINUTES || 10),
+  OTP_MAX_ATTEMPTS: Number(process.env.OTP_MAX_ATTEMPTS || 5),
+
+  REDIS_URL: process.env.REDIS_URL || "",
+  DAILY_DIGEST_CRON: process.env.DAILY_DIGEST_CRON || "0 0 9 * * *",
+  CONTEST_REMINDER_MINUTES:
+    process.env.CONTEST_REMINDER_MINUTES || "1440,60",
 };
 
 if (!env.DATABASE_URL) {
@@ -63,6 +74,10 @@ if (!env.JUDGE0_API_URL) {
 
 if (!env.SESSION_SECRET) {
   throw new Error("SESSION_SECRET is missing in backend/.env");
+}
+
+if (!env.REDIS_URL) {
+  throw new Error("REDIS_URL is missing in backend/.env");
 }
 
 if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {

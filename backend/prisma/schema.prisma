@@ -26,37 +26,72 @@ enum AuthProvider {
   GITHUB
 }
 
+enum NotificationType {
+  NEW_PROBLEM
+  PROBLEM_SOLVED
+  STREAK_UPDATED
+  STREAK_MILESTONE
+  BADGE_AWARDED
+  CONTEST_REMINDER
+  DAILY_QUESTION
+  SYSTEM
+}
+
+enum AuditAction {
+  USER_ROLE_UPDATED
+  USER_BLOCKED
+  USER_UNBLOCKED
+  USER_DELETED
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+}
+
 model User {
-  id          String       @id @default(uuid())
-  name        String
-  email       String       @unique
-  password    String?
-  role        UserRole     @default(USER)
-  plan        UserPlan     @default(FREE)
-  provider    AuthProvider @default(LOCAL)
-  providerId  String?
-  avatarUrl   String?
-  solvedCount Int          @default(0)
-  streak      Int          @default(0)
-  lastSeenAt  DateTime?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+  id            String       @id @default(uuid())
+  name          String
+  email         String       @unique
+  password      String?
+  role          UserRole     @default(USER)
+  plan          UserPlan     @default(FREE)
+  provider      AuthProvider @default(LOCAL)
+  providerId    String?
+  avatarUrl     String?
+  solvedCount   Int          @default(0)
+  streak        Int          @default(0)
+  lastSolvedAt  DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  isBlocked     Boolean   @default(false)
+  blockedAt     DateTime?
+  blockedReason String?
 
   razorpayCustomerId     String?
   razorpaySubscriptionId String?
   subscriptionStatus     String?
   currentPeriodEnd       DateTime?
 
-  problems            Problem[]                  @relation("ProblemAuthor")
-  submissions         Submission[]
-  passwordResetTokens PasswordResetToken[]
-  aiUsages            AIUsage[]
-  userBadges          UserBadge[]
-  dailyAttempts       UserDailyQuestionAttempt[]
+  problems             Problem[]                   @relation("ProblemAuthor")
+  submissions          Submission[]
+  passwordResetTokens  PasswordResetToken[]
+  passwordResetOtps    PasswordResetOtp[]
+  aiUsages             AIUsage[]
+  userBadges           UserBadge[]
+  dailyAttempts        UserDailyQuestionAttempt[]
+  notifications        Notification[]
+  contestRegistrations ContestRegistration[]
+  createdContests      Contest[]                   @relation("ContestAuthor")
+  actedAuditLogs       AuditLog[]                  @relation("AuditActor")
+  targetedAuditLogs    AuditLog[]                  @relation("AuditTarget")
+  loginEvents          LoginEvent[]
 
   @@index([provider, providerId])
   @@index([role])
   @@index([plan])
+  @@index([isBlocked])
 }
 
 model Problem {
@@ -83,9 +118,13 @@ model Problem {
   createdById String?
   createdBy   User?   @relation("ProblemAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
-  testCases     TestCase[]
-  submissions   Submission[]
-  dailyQuestion DailyQuestion?
+  testCases       TestCase[]
+  submissions     Submission[]
+  dailyQuestion   DailyQuestion?
+  contestProblems ContestProblem[]
+
+  @@index([difficulty])
+  @@index([isPublished])
 }
 
 model TestCase {
@@ -102,7 +141,7 @@ model TestCase {
 model Submission {
   id            String   @id @default(uuid())
   language      String
-  languageId    Int
+  languageId    Int?
   code          String
   status        String
   verdict       String?
@@ -114,14 +153,18 @@ model Submission {
   passedCount   Int      @default(0)
   totalCount    Int      @default(0)
   createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
 
   userId    String
   problemId String
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
-}
 
+  @@index([createdAt])
+  @@index([verdict])
+  @@index([status])
+}
 model PasswordResetToken {
   id        String    @id @default(uuid())
   token     String    @unique
@@ -133,6 +176,24 @@ model PasswordResetToken {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+}
+
+model PasswordResetOtp {
+  id                String    @id @default(uuid())
+  userId            String
+  otpHash           String
+  purpose           String
+  expiresAt         DateTime
+  attempts          Int       @default(0)
+  consumedAt        DateTime?
+  verifiedAt        DateTime?
+  verificationToken String?
+  createdAt         DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([purpose])
 }
 
 model AIUsage {
@@ -181,6 +242,8 @@ model DailyQuestion {
 
   problem  Problem                    @relation(fields: [problemId], references: [id], onDelete: Cascade)
   attempts UserDailyQuestionAttempt[]
+
+  @@index([activeDate])
 }
 
 model UserDailyQuestionAttempt {
@@ -196,4 +259,123 @@ model UserDailyQuestionAttempt {
   @@unique([userId, dailyQuestionId])
   @@index([userId])
   @@index([dailyQuestionId])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+model Contest {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  isPublished Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdById String
+  createdBy   User     @relation("ContestAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+
+  problems      ContestProblem[]
+  registrations ContestRegistration[]
+
+  @@index([startAt])
+  @@index([isPublished])
+}
+
+model ContestProblem {
+  id        String   @id @default(uuid())
+  contestId String
+  problemId String
+  sortOrder Int      @default(0)
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, problemId])
+  @@index([contestId])
+  @@index([problemId])
+}
+
+model ContestRegistration {
+  id        String   @id @default(uuid())
+  contestId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([contestId, userId])
+  @@index([contestId])
+  @@index([userId])
+}
+
+model AuditLog {
+  id           String      @id @default(uuid())
+  action       AuditAction
+  actorUserId  String?
+  targetUserId String?
+  ipAddress    String?
+  userAgent    String?
+  metadata     Json?
+  createdAt    DateTime    @default(now())
+
+  actorUser  User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser User? @relation("AuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([action])
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([createdAt])
+}
+
+model LoginEvent {
+  id           String   @id @default(uuid())
+  userId       String?
+  email        String
+  success      Boolean
+  isSuspicious Boolean  @default(false)
+  reason       String?
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@index([userId])
+  @@index([success])
+  @@index([isSuspicious])
+  @@index([createdAt])
+}
+
+model PaymentAudit {
+  id          String   @id @default(uuid())
+  eventId     String   @unique
+  type        String
+  payload     Json
+  status      String
+  retryCount  Int      @default(0)
+  lastError   String?
+  processedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([status])
+  @@index([createdAt])
 }

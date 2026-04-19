@@ -16,3 +16,8 @@ export const cancelMySubscriptionApi = async () => {
   const response = await API.post("/billing/cancel");
   return response.data;
 };
+
+export const createOrderApi = async (amount: number) => {
+  const response = await API.post("/billing/order", { amount });
+  return response.data;
+};

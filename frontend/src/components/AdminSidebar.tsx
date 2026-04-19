@@ -1,8 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { LayoutDashboard, PlusSquare } from "lucide-react";
+import {
+  LayoutDashboard,
+  PlusSquare,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
 
 const links = [
-  { label: "Admin Dashboard", href: "/dashboard", icon: LayoutDashboard },
+  { label: "Admin Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
   { label: "Create Problem", href: "/create-problem", icon: PlusSquare },
 ];
 
@@ -10,15 +15,24 @@ export default function AdminSidebar() {
   const location = useLocation();
 
   return (
-    <aside className="rounded-3xl border border-border bg-card/90 backdrop-blur-xl p-4">
-      <div className="mb-4">
-        <p className="font-heading text-lg font-semibold">Admin Panel</p>
-        <p className="text-sm text-muted-foreground">
-          Create, preview, and publish problems
+    <aside className="overflow-hidden rounded-[1.8rem] border border-border/70 bg-card/90 p-4 backdrop-blur-2xl">
+      <div className="rounded-[1.4rem] border border-border/70 bg-background/50 p-4">
+        <div className="flex h-11 w-11 items-center justify-center rounded-[1rem] border border-primary/20 bg-primary/10 text-primary">
+          <ShieldCheck className="h-5 w-5" />
+        </div>
+
+        <p className="mt-4 font-heading text-xl font-black">Admin Panel</p>
+        <p className="mt-2 text-sm leading-7 text-muted-foreground">
+          Manage problems, control publishing flow, and keep platform content clean.
         </p>
+
+        <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs uppercase tracking-[0.16em] text-primary">
+          <Sparkles className="h-3.5 w-3.5" />
+          Internal tools
+        </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="mt-4 space-y-2">
         {links.map((link) => {
           const Icon = link.icon;
           const active = location.pathname === link.href;
@@ -27,14 +41,23 @@ export default function AdminSidebar() {
             <Link
               key={link.href}
               to={link.href}
-              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition ${
+              className={`group flex items-center gap-3 rounded-[1.2rem] px-4 py-3 text-sm font-medium transition ${
                 active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "border border-primary/20 bg-primary/10 text-primary"
+                  : "border border-transparent text-muted-foreground hover:border-border/70 hover:bg-background/55 hover:text-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" />
-              {link.label}
+              <div
+                className={`flex h-9 w-9 items-center justify-center rounded-xl border transition ${
+                  active
+                    ? "border-primary/20 bg-primary/10 text-primary"
+                    : "border-border/60 bg-background/60 text-muted-foreground group-hover:text-foreground"
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+              </div>
+
+              <span>{link.label}</span>
             </Link>
           );
         })}

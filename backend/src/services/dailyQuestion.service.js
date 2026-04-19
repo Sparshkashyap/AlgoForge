@@ -1,72 +1,155 @@
 import prisma from "../config/db.js";
+import { createBulkNotificationsForUsersService } from "./notification.service.js";
 
-const startOfDay = (date = new Date()) => {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  return d;
+const getTodayDateOnly = () => {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
 };
 
 export const assignDailyQuestionService = async () => {
-  const today = startOfDay();
+  const today = getTodayDateOnly();
 
   const existing = await prisma.dailyQuestion.findUnique({
-    where: { activeDate: today },
-    include: { problem: true },
+    where: {
+      activeDate: today,
+    },
+    include: {
+      problem: true,
+    },
   });
 
-  if (existing) return existing;
+  if (existing) {
+    return existing;
+  }
 
-  const candidates = await prisma.problem.findMany({
-    where: { isPublished: true },
-    orderBy: { createdAt: "desc" },
-    take: 50,
+  const alreadyUsedProblemIds = (
+    await prisma.dailyQuestion.findMany({
+      select: {
+        problemId: true,
+      },
+    })
+  ).map((item) => item.problemId);
+
+  let selectedProblem = await prisma.problem.findFirst({
+    where: {
+      isPublished: true,
+      id: {
+        notIn: alreadyUsedProblemIds.length ? alreadyUsedProblemIds : undefined,
+      },
+    },
+    orderBy: [
+      { difficulty: "asc" },
+      { createdAt: "desc" },
+    ],
   });
 
-  if (!candidates.length) {
-    const error = new Error("No published problems available");
+  if (!selectedProblem) {
+    selectedProblem = await prisma.problem.findFirst({
+      where: {
+        isPublished: true,
+      },
+      orderBy: [
+        { difficulty: "asc" },
+        { createdAt: "desc" },
+      ],
+    });
+  }
+
+  if (!selectedProblem) {
+    const error = new Error("No published problem available for daily question");
     error.statusCode = 400;
     throw error;
   }
 
-  const randomProblem =
-    candidates[Math.floor(Math.random() * candidates.length)];
-
-  return prisma.dailyQuestion.create({
+  const dailyQuestion = await prisma.dailyQuestion.create({
     data: {
-      problemId: randomProblem.id,
+      problemId: selectedProblem.id,
       activeDate: today,
     },
-    include: { problem: true },
+    include: {
+      problem: true,
+    },
   });
+
+  const users = await prisma.user.findMany({
+    where: {
+      isBlocked: false,
+    },
+    select: {
+      id: true,
+    },
+  });
+
+  await createBulkNotificationsForUsersService({
+    userIds: users.map((user) => user.id),
+    type: "DAILY_QUESTION",
+    title: "Daily question is live",
+    message: `${selectedProblem.title} is today's daily question.`,
+    data: {
+      dailyQuestionId: dailyQuestion.id,
+      problemId: selectedProblem.id,
+      slug: selectedProblem.slug,
+      difficulty: selectedProblem.difficulty,
+    },
+  });
+
+  return dailyQuestion;
 };
 
-export const getDailyQuestionService = async (userId = null) => {
-  const today = startOfDay();
+export const getActiveDailyQuestionService = async () => {
+  const today = getTodayDateOnly();
 
-  let daily = await prisma.dailyQuestion.findUnique({
-    where: { activeDate: today },
-    include: { problem: true },
+  let dailyQuestion = await prisma.dailyQuestion.findUnique({
+    where: {
+      activeDate: today,
+    },
+    include: {
+      problem: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          description: true,
+          difficulty: true,
+          tags: true,
+          sampleInput: true,
+          sampleOutput: true,
+          explanation: true,
+          constraints: true,
+          isPremium: true,
+        },
+      },
+    },
   });
 
-  if (!daily) {
-    daily = await assignDailyQuestionService();
-  }
-
-  let myAttempt = null;
-
-  if (userId) {
-    myAttempt = await prisma.userDailyQuestionAttempt.findFirst({
+  if (!dailyQuestion) {
+    dailyQuestion = await assignDailyQuestionService();
+    dailyQuestion = await prisma.dailyQuestion.findUnique({
       where: {
-        userId,
-        dailyQuestionId: daily.id,
+        activeDate: today,
+      },
+      include: {
+        problem: {
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            description: true,
+            difficulty: true,
+            tags: true,
+            sampleInput: true,
+            sampleOutput: true,
+            explanation: true,
+            constraints: true,
+            isPremium: true,
+          },
+        },
       },
     });
   }
 
-  return {
-    daily,
-    myAttempt,
-  };
+  return dailyQuestion;
 };
 
 export const markDailyQuestionAttemptService = async ({

@@ -1,18 +1,16 @@
 import API from "./axios";
+import type { LoginPayload, SignupPayload } from "@/types/auth.types";
 
-export const signupApi = async (payload: {
-  name: string;
-  email: string;
-  password: string;
-}) => {
+export const signupApi = async (
+  payload: SignupPayload & { recaptchaToken: string }
+) => {
   const response = await API.post("/auth/signup", payload);
   return response.data;
 };
 
-export const loginApi = async (payload: {
-  email: string;
-  password: string;
-}) => {
+export const loginApi = async (
+  payload: LoginPayload & { recaptchaToken: string }
+) => {
   const response = await API.post("/auth/login", payload);
   return response.data;
 };
@@ -27,16 +25,29 @@ export const meApi = async () => {
   return response.data;
 };
 
-export const forgotPasswordApi = async (email: string) => {
-  const response = await API.post("/auth/forgot-password", { email });
+export const forgotPasswordApi = async (payload: {
+  email: string;
+  recaptchaToken: string;
+}) => {
+  const response = await API.post("/auth/forgot-password-otp", payload);
+  return response.data;
+};
+
+export const verifyResetOtpApi = async (payload: {
+  email: string;
+  otp: string;
+  recaptchaToken: string;
+}) => {
+  const response = await API.post("/auth/verify-reset-otp", payload);
   return response.data;
 };
 
 export const resetPasswordApi = async (payload: {
-  token: string;
+  verificationToken: string;
   password: string;
+  confirmPassword: string;
 }) => {
-  const response = await API.post("/auth/reset-password", payload);
+  const response = await API.post("/auth/reset-password-with-otp", payload);
   return response.data;
 };
 

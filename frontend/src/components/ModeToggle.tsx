@@ -1,19 +1,31 @@
 import { useTheme } from "next-themes";
 import { motion } from "framer-motion";
 import { Sun, Moon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 export function ModeToggle() {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="h-11 w-11 rounded-full border border-border/70 bg-card/70" />
+    );
+  }
 
   const isDark = theme === "dark";
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="theme-toggle-btn group relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-card/70 backdrop-blur-xl transition"
+      className="group relative flex h-11 w-11 items-center justify-center overflow-hidden rounded-full border border-border/70 bg-card/70 backdrop-blur-xl transition hover:scale-[1.04]"
     >
-      {/* Glow */}
-      <span className="theme-toggle-glow absolute inset-0" />
+      <span className="absolute inset-0 opacity-0 transition group-hover:opacity-100 bg-gradient-to-br from-primary/10 to-pink-500/10" />
 
       {/* Sun */}
       <motion.div

@@ -1,24 +1,38 @@
 import prisma from "../config/db.js";
 import { razorpay, getPlanIdForTier } from "./razorpay.service.js";
 
+const getPlan = (sub) => {
+  const note = sub?.notes?.plan;
+  if (["STANDARD", "PRO"].includes(note)) return note;
+
+  const id = sub?.plan_id;
+  if (id === process.env.RAZORPAY_STANDARD_PLAN_ID) return "STANDARD";
+  if (id === process.env.RAZORPAY_PRO_PLAN_ID) return "PRO";
+
+  return "PRO";
+};
+
+const toDate = (ts) => (ts ? new Date(ts * 1000) : null);
+
 export const createSubscriptionCheckoutService = async ({
   userId,
   tier,
 }) => {
   if (!["STANDARD", "PRO"].includes(tier)) {
-    const error = new Error("Invalid subscription tier");
-    error.statusCode = 400;
-    throw error;
+    const err = new Error("Invalid subscription tier");
+    err.statusCode = 400;
+    throw err;
   }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
+    select: { id: true, name: true, email: true },
   });
 
   if (!user) {
-    const error = new Error("User not found");
-    error.statusCode = 404;
-    throw error;
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
   }
 
   const planId = getPlanIdForTier(tier);
@@ -29,7 +43,7 @@ export const createSubscriptionCheckoutService = async ({
     total_count: 120,
     notes: {
       userId,
-      tier,
+      plan: tier,
     },
   });
 
@@ -37,7 +51,7 @@ export const createSubscriptionCheckoutService = async ({
     where: { id: userId },
     data: {
       razorpaySubscriptionId: subscription.id,
-      subscriptionStatus: subscription.status,
+      subscriptionStatus: String(subscription.status || "").toUpperCase(),
     },
   });
 
@@ -53,7 +67,7 @@ export const createSubscriptionCheckoutService = async ({
 };
 
 export const getMyBillingService = async (userId) => {
-  const user = await prisma.user.findUnique({
+  return prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -63,19 +77,21 @@ export const getMyBillingService = async (userId) => {
       currentPeriodEnd: true,
     },
   });
-
-  return user;
 };
 
 export const cancelMySubscriptionService = async (userId) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
+    select: {
+      id: true,
+      razorpaySubscriptionId: true,
+    },
   });
 
   if (!user?.razorpaySubscriptionId) {
-    const error = new Error("No active subscription found");
-    error.statusCode = 400;
-    throw error;
+    const err = new Error("No active subscription found");
+    err.statusCode = 400;
+    throw err;
   }
 
   const cancelled = await razorpay.subscriptions.cancel(
@@ -86,38 +102,76 @@ export const cancelMySubscriptionService = async (userId) => {
   await prisma.user.update({
     where: { id: userId },
     data: {
-      subscriptionStatus: cancelled.status,
+      subscriptionStatus: String(cancelled.status || "cancelled").toUpperCase(),
     },
   });
 
   return cancelled;
 };
 
-export const applySubscriptionEventService = async ({
+export const activateSubscriptionService = async ({
+  userId,
   subscriptionId,
-  status,
   plan,
-  currentEndAt,
+  currentPeriodEnd,
 }) => {
-  const user = await prisma.user.findFirst({
-    where: { razorpaySubscriptionId: subscriptionId },
-  });
-
-  if (!user) return null;
-
-  const nextPlan =
-    status === "active" || status === "authenticated"
-      ? plan
-      : status === "cancelled"
-      ? "FREE"
-      : user.plan;
-
   return prisma.user.update({
-    where: { id: user.id },
+    where: { id: userId },
     data: {
-      plan: nextPlan,
-      subscriptionStatus: status,
-      currentPeriodEnd: currentEndAt ? new Date(currentEndAt * 1000) : user.currentPeriodEnd,
+      plan,
+      razorpaySubscriptionId: subscriptionId,
+      subscriptionStatus: "ACTIVE",
+      currentPeriodEnd: toDate(currentPeriodEnd),
     },
   });
+};
+
+export const cancelSubscriptionService = async (subscriptionId) => {
+  return prisma.user.updateMany({
+    where: { razorpaySubscriptionId: subscriptionId },
+    data: {
+      subscriptionStatus: "CANCELLED",
+      plan: "FREE",
+    },
+  });
+};
+
+export const processRazorpayWebhookEventService = async (payload) => {
+  const event = payload.event;
+  const sub = payload?.payload?.subscription?.entity;
+
+  if (!sub) {
+    throw new Error("Invalid webhook payload");
+  }
+
+  switch (event) {
+    case "subscription.activated":
+    case "subscription.charged":
+    case "subscription.resumed": {
+      const userId = sub?.notes?.userId;
+      if (!userId) {
+        throw new Error("Missing userId in notes");
+      }
+
+      return activateSubscriptionService({
+        userId,
+        subscriptionId: sub.id,
+        plan: getPlan(sub),
+        currentPeriodEnd: sub.current_end,
+      });
+    }
+
+    case "subscription.cancelled":
+    case "subscription.completed":
+    case "subscription.halted": {
+      if (!sub.id) {
+        throw new Error("Missing subscription id");
+      }
+
+      return cancelSubscriptionService(sub.id);
+    }
+
+    default:
+      return null;
+  }
 };

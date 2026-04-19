@@ -1,16 +1,48 @@
-import api from '@/lib/api';
+import api from "@/lib/api";
 
-export const getProblems = async (params?: Record<string, string | number>) => {
-  const response = await api.get('/problems', { params });
-  return response.data;
+export const getProblemsApi = async (
+  params?: Record<string, string | number>
+) => {
+  try {
+    const response = await api.get("/problems", { params });
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
-export const getProblemBySlug = async (slug: string) => {
-  const response = await api.get(`/problems/${slug}`);
-  return response.data;
+export const getProblemBySlugApi = async (slug: string) => {
+  try {
+    const response = await api.get(`/problems/${slug}`);
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
 };
 
-export const createProblem = async (payload: any) => {
-  const response = await api.post('/problems', payload);
-  return response.data;
+export const createProblemApi = async (payload: any) => {
+  try {
+    const response = await api.post("/problems", payload);
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const updateProblemApi = async (id: string, payload: any) => {
+  try {
+    const response = await api.put(`/problems/${id}`, payload);
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
+};
+
+export const deleteProblemApi = async (id: string) => {
+  try {
+    const response = await api.delete(`/problems/${id}`);
+    return response.data;
+  } catch (error: any) {
+    throw error;
+  }
 };

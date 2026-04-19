@@ -1,39 +1,106 @@
-const trimTrailing = (value = "") => String(value).trim();
+const trim = (value = "") => String(value ?? "").trim();
 
-const stripJavaClassWrapper = (code) => {
-  const clean = trimTrailing(code);
+const ensureUserCode = (userCode) => {
+  const cleanUserCode = trim(userCode);
 
-  // Remove outer class wrapper:
-  // public class Main { ... }
-  // class Main { ... }
-  const publicMatch = clean.match(/^public\s+class\s+Main\s*\{([\s\S]*)\}$/);
-  if (publicMatch) {
-    return publicMatch[1].trim();
+  if (!cleanUserCode) {
+    const error = new Error("User code is required");
+    error.statusCode = 400;
+    throw error;
   }
 
-  const plainMatch = clean.match(/^class\s+Main\s*\{([\s\S]*)\}$/);
-  if (plainMatch) {
-    return plainMatch[1].trim();
-  }
-
-  return clean;
+  return cleanUserCode;
 };
 
-const trim = (v = "") => String(v).trim();
+const ensureDriverCode = ({ language, driverCode }) => {
+  const cleanDriverCode = trim(driverCode);
+
+  if (!cleanDriverCode) {
+    const error = new Error(`Driver code is missing for language: ${language}`);
+    error.statusCode = 500;
+    throw error;
+  }
+
+  return cleanDriverCode;
+};
+
+const mergeWithoutDuplicateIncludes = (baseIncludes, userCode) => {
+  const lines = trim(userCode).split("\n");
+
+  const filtered = lines.filter((line) => {
+    const clean = line.trim();
+    return !baseIncludes.some((inc) => clean === inc);
+  });
+
+  return filtered.join("\n").trim();
+};
 
 export const buildExecutableCode = ({ language, userCode, driverCode }) => {
-  const code = trim(userCode);
-  const driver = trim(driverCode?.[language]);
+  const cleanUserCode = ensureUserCode(userCode);
 
-  if (!code) throw new Error("User code missing");
-  if (!driver) throw new Error(`Driver missing for ${language}`);
-
-  // 🚨 IMPORTANT: never mix languages
   switch (language) {
-    case "java":
-      return `
-import java.util.*;
-${code}
+    case "javascript": {
+      const cleanDriverCode = ensureDriverCode({ language, driverCode });
+
+      return `${cleanUserCode}
+
+${cleanDriverCode}
+`;
+    }
+
+    case "python": {
+      const cleanDriverCode = ensureDriverCode({ language, driverCode });
+
+      return `${cleanUserCode}
+
+${cleanDriverCode}
+`;
+    }
+
+    case "cpp": {
+      const cleanDriverCode = ensureDriverCode({ language, driverCode });
+
+      const mergedUserCode = mergeWithoutDuplicateIncludes(
+        ["#include <bits/stdc++.h>", "using namespace std;"],
+        cleanUserCode
+      );
+
+      return `#include <bits/stdc++.h>
+using namespace std;
+
+${mergedUserCode}
+
+${cleanDriverCode}
+`;
+    }
+
+    case "c": {
+      const cleanDriverCode = ensureDriverCode({ language, driverCode });
+
+      const mergedUserCode = mergeWithoutDuplicateIncludes(
+        ["#include <stdio.h>", "#include <stdlib.h>", "#include <string.h>"],
+        cleanUserCode
+      );
+
+      return `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+${mergedUserCode}
+
+${cleanDriverCode}
+`;
+    }
+
+    case "java": {
+      const mergedUserCode = mergeWithoutDuplicateIncludes(
+        ["import java.util.*;"],
+        cleanUserCode
+      );
+
+      return `import java.util.*;
+
+${mergedUserCode}
 
 class Driver {
     public static void main(String[] args) {
@@ -41,63 +108,23 @@ class Driver {
         StringBuilder input = new StringBuilder();
 
         while (sc.hasNextLine()) {
-            input.append(sc.nextLine()).append("\\n");
+            input.append(sc.nextLine());
+            if (sc.hasNextLine()) {
+                input.append("\\n");
+            }
         }
 
         System.out.print(Main.solve(input.toString()));
+        sc.close();
     }
 }
 `;
+    }
 
-    case "cpp":
-      return `
-#include <bits/stdc++.h>
-using namespace std;
-
-${code}
-
-int main() {
-    string input, line;
-    while (getline(cin, line)) input += line + "\\n";
-    cout << solve(input);
-}
-`;
-
-    case "c":
-      return `
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-
-${code}
-
-int main() {
-    char input[10000];
-    int len = fread(input, 1, sizeof(input)-1, stdin);
-    input[len] = '\\0';
-    printf("%s", solve(input));
-}
-`;
-
-    case "javascript":
-      return `
-${code}
-
-const fs = require("fs");
-const input = fs.readFileSync(0, "utf-8").trim();
-process.stdout.write(String(solve(input)));
-`;
-
-    case "python":
-      return `
-${code}
-
-import sys
-input_data = sys.stdin.read().strip()
-print(solve(input_data))
-`;
-
-    default:
-      throw new Error("Unsupported language");
+    default: {
+      const error = new Error("Unsupported language");
+      error.statusCode = 400;
+      throw error;
+    }
   }
 };

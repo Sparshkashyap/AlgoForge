@@ -1,6 +1,14 @@
 import prisma from "../config/db.js";
-import { judgeSubmission, getLanguageId } from "./judge.service.js";
-import { buildExecutableCode } from "../utils/codeWrapper.js";
+import { executionQueue } from "../queues/execution.queue.js";
+import { getLanguageId } from "./judge.service.js";
+
+const checkAccess = (user, problem) => {
+  return (
+    !problem.isPremium ||
+    user.role === "ADMIN" ||
+    ["STANDARD", "PRO"].includes(user.plan)
+  );
+};
 
 export const createSubmissionService = async ({
   problemId,
@@ -10,86 +18,50 @@ export const createSubmissionService = async ({
 }) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: {
-      id: true,
-      role: true,
-      plan: true,
-    },
+    select: { id: true, role: true, plan: true },
   });
 
+  if (!user) {
+    const err = new Error("User not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
   const problem = await prisma.problem.findFirst({
-    where: {
-      id: problemId,
-      isPublished: true,
-    },
+    where: { id: problemId, isPublished: true },
     include: {
-      testCases: true,
+      testCases: { orderBy: { createdAt: "asc" } },
     },
   });
 
   if (!problem) {
-    const error = new Error("Problem not found");
-    error.statusCode = 404;
-    throw error;
+    const err = new Error("Problem not found");
+    err.statusCode = 404;
+    throw err;
   }
 
-  const hasPremiumAccess =
-    !problem.isPremium ||
-    user?.role === "ADMIN" ||
-    ["STANDARD", "PRO"].includes(user?.plan);
-
-  if (!hasPremiumAccess) {
-    const error = new Error("Upgrade to a premium plan to access this problem");
-    error.statusCode = 403;
-    throw error;
+  if (!checkAccess(user, problem)) {
+    const err = new Error("Upgrade to premium to access this problem");
+    err.statusCode = 403;
+    throw err;
   }
 
   if (!problem.testCases.length) {
-    const error = new Error("Problem has no test cases configured");
-    error.statusCode = 400;
-    throw error;
+    const err = new Error("No test cases configured");
+    err.statusCode = 400;
+    throw err;
   }
 
-  const executableCode = buildExecutableCode({
-    language,
-    userCode: code,
-    driverCode: problem.driverCode?.[language],
-  });
-
-  const languageId = getLanguageId(language);
-
-  const pendingSubmission = await prisma.submission.create({
+  const submission = await prisma.submission.create({
     data: {
       userId,
       problemId,
       language,
-      languageId,
+      languageId: getLanguageId(language),
       code,
-      status: "Pending",
-      verdict: "Pending",
-    },
-  });
-
-  const judgeResult = await judgeSubmission({
-    language,
-    code: executableCode,
-    testCases: problem.testCases,
-  });
-
-  const submission = await prisma.submission.update({
-    where: {
-      id: pendingSubmission.id,
-    },
-    data: {
-      status: judgeResult.status,
-      verdict: judgeResult.verdict,
-      stdout: judgeResult.stdout,
-      stderr: judgeResult.stderr,
-      compileOutput: judgeResult.compileOutput,
-      runtime: judgeResult.runtime ? String(judgeResult.runtime) : null,
-      memory: judgeResult.memory,
-      passedCount: judgeResult.passedCount,
-      totalCount: judgeResult.totalCount,
+      status: "QUEUED",
+      verdict: "Queued",
+      totalCount: problem.testCases.length,
     },
     include: {
       problem: {
@@ -97,6 +69,7 @@ export const createSubmissionService = async ({
           id: true,
           title: true,
           slug: true,
+          difficulty: true,
           tags: true,
           isPremium: true,
         },
@@ -104,25 +77,18 @@ export const createSubmissionService = async ({
     },
   });
 
-  if (submission.verdict === "Accepted") {
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        solvedCount: {
-          increment: 1,
-        },
-      },
-    });
-  }
+  await executionQueue.add(
+    "execute-submission",
+    { submissionId: submission.id },
+    { jobId: `submission:${submission.id}` }
+  );
 
   return submission;
 };
 
-export const listMySubmissionsService = async (userId) => {
-  return prisma.submission.findMany({
-    where: {
-      userId,
-    },
+export const listMySubmissionsService = (userId) =>
+  prisma.submission.findMany({
+    where: { userId },
     include: {
       problem: {
         select: {
@@ -131,11 +97,38 @@ export const listMySubmissionsService = async (userId) => {
           slug: true,
           tags: true,
           isPremium: true,
+          difficulty: true,
         },
       },
     },
-    orderBy: {
-      createdAt: "desc",
+    orderBy: { createdAt: "desc" },
+  });
+
+export const getSubmissionByIdForUserService = async ({
+  submissionId,
+  userId,
+}) => {
+  const submission = await prisma.submission.findFirst({
+    where: { id: submissionId, userId },
+    include: {
+      problem: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          difficulty: true,
+          tags: true,
+          isPremium: true,
+        },
+      },
     },
   });
+
+  if (!submission) {
+    const err = new Error("Submission not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return submission;
 };

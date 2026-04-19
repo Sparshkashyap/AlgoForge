@@ -26,6 +26,9 @@ export const authMiddleware = async (req, res, next) => {
         avatarUrl: true,
         solvedCount: true,
         streak: true,
+        isBlocked: true,
+        blockedAt: true,
+        blockedReason: true,
         createdAt: true,
         lastSeenAt: true,
       },
@@ -35,6 +38,15 @@ export const authMiddleware = async (req, res, next) => {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
+      });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({
+        success: false,
+        message: user.blockedReason
+          ? `Account blocked: ${user.blockedReason}`
+          : "Your account has been blocked",
       });
     }
 

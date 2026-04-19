@@ -73,6 +73,9 @@ function formatTimer(totalSeconds: number) {
   )}`;
 }
 
+const isAccepted = (item: Submission) =>
+  (item.verdict || item.status) === "Accepted";
+
 export default function ProblemDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -111,9 +114,7 @@ export default function ProblemDetails() {
   }, [codeByLanguage, language, problem]);
 
   const acceptedCount = useMemo(() => {
-    return previousSubmissions.filter(
-      (item) => (item.verdict || item.status) === "Accepted"
-    ).length;
+    return previousSubmissions.filter(isAccepted).length;
   }, [previousSubmissions]);
 
   useEffect(() => {
@@ -172,6 +173,11 @@ export default function ProblemDetails() {
   const handleRun = async () => {
     if (!problem) return;
 
+    if (blockedPremium) {
+      toast.error("Upgrade to Pro to run this problem");
+      return;
+    }
+
     try {
       setRunning(true);
 
@@ -217,6 +223,11 @@ export default function ProblemDetails() {
       return;
     }
 
+    if (blockedPremium) {
+      toast.error("Upgrade to Pro to submit this problem");
+      return;
+    }
+
     try {
       setSubmitting(true);
 
@@ -228,7 +239,7 @@ export default function ProblemDetails() {
 
       setSubmission(data.data);
 
-      if ((data.data.verdict || data.data.status) === "Accepted") {
+      if (isAccepted(data.data)) {
         fireCenterConfetti();
       }
 

@@ -1,10 +1,45 @@
 import prisma from "../config/db.js";
 import { comparePassword, hashPassword } from "../utils/password.js";
 import { signToken } from "../utils/jwt.js";
+import { verifyRecaptchaToken } from "./recaptcha.service.js";
+import {
+  createLoginEventService,
+  getRecentFailedLoginCountService,
+} from "./audit.service.js";
 
-export const signupService = async ({ name, email, password }) => {
+const selectSafeUser = {
+  id: true,
+  name: true,
+  email: true,
+  role: true,
+  plan: true,
+  avatarUrl: true,
+  solvedCount: true,
+  streak: true,
+  isBlocked: true,
+  blockedAt: true,
+  blockedReason: true,
+  createdAt: true,
+  lastSeenAt: true,
+};
+
+export const signupService = async ({
+  name,
+  email,
+  password,
+  recaptchaToken,
+  remoteIp,
+}) => {
+  await verifyRecaptchaToken({
+    token: recaptchaToken,
+    remoteIp,
+    expectedAction: "signup",
+  });
+
+  const normalizedEmail = email.trim().toLowerCase();
+
   const existing = await prisma.user.findUnique({
-    where: { email },
+    where: { email: normalizedEmail },
   });
 
   if (existing) {
@@ -17,12 +52,14 @@ export const signupService = async ({ name, email, password }) => {
 
   const user = await prisma.user.create({
     data: {
-      name,
-      email,
+      name: name.trim(),
+      email: normalizedEmail,
       password: hashedPassword,
       provider: "LOCAL",
+      role: "USER",
       lastSeenAt: new Date(),
     },
+    select: selectSafeUser,
   });
 
   const token = signToken({
@@ -31,31 +68,108 @@ export const signupService = async ({ name, email, password }) => {
     role: user.role,
   });
 
-  return { user, token };
+  return {
+    user,
+    token,
+  };
 };
 
-export const loginService = async ({ email, password }) => {
-  const user = await prisma.user.findUnique({
-    where: { email },
+export const loginService = async ({
+  email,
+  password,
+  recaptchaToken,
+  remoteIp,
+  userAgent,
+}) => {
+  await verifyRecaptchaToken({
+    token: recaptchaToken,
+    remoteIp,
+    expectedAction: "login",
   });
 
-  if (!user || !user.password) {
+  const normalizedEmail = email.trim().toLowerCase();
+
+  const recentFailedCount = await getRecentFailedLoginCountService({
+    email: normalizedEmail,
+    ipAddress: remoteIp,
+    withinMinutes: 30,
+  });
+
+  const suspiciousByVolume = recentFailedCount >= 5;
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: normalizedEmail },
+  });
+
+  if (!existingUser || !existingUser.password) {
+    await createLoginEventService({
+      email: normalizedEmail,
+      success: false,
+      reason: "USER_NOT_FOUND_OR_NO_PASSWORD",
+      ipAddress: remoteIp,
+      userAgent,
+      isSuspicious: suspiciousByVolume,
+    });
+
     const error = new Error("Invalid credentials");
     error.statusCode = 401;
     throw error;
   }
 
-  const valid = await comparePassword(password, user.password);
+  if (existingUser.isBlocked) {
+    await createLoginEventService({
+      userId: existingUser.id,
+      email: normalizedEmail,
+      success: false,
+      reason: "ACCOUNT_BLOCKED",
+      ipAddress: remoteIp,
+      userAgent,
+      isSuspicious: true,
+    });
 
-  if (!valid) {
+    const error = new Error(
+      existingUser.blockedReason
+        ? `Account blocked: ${existingUser.blockedReason}`
+        : "Your account has been blocked"
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const passwordValid = await comparePassword(password, existingUser.password);
+
+  if (!passwordValid) {
+    await createLoginEventService({
+      userId: existingUser.id,
+      email: normalizedEmail,
+      success: false,
+      reason: "INVALID_PASSWORD",
+      ipAddress: remoteIp,
+      userAgent,
+      isSuspicious: suspiciousByVolume,
+    });
+
     const error = new Error("Invalid credentials");
     error.statusCode = 401;
     throw error;
   }
 
-  await prisma.user.update({
-    where: { id: user.id },
-    data: { lastSeenAt: new Date() },
+  const user = await prisma.user.update({
+    where: { id: existingUser.id },
+    data: {
+      lastSeenAt: new Date(),
+    },
+    select: selectSafeUser,
+  });
+
+  await createLoginEventService({
+    userId: user.id,
+    email: normalizedEmail,
+    success: true,
+    reason: "LOGIN_SUCCESS",
+    ipAddress: remoteIp,
+    userAgent,
+    isSuspicious: suspiciousByVolume,
   });
 
   const token = signToken({
@@ -64,5 +178,8 @@ export const loginService = async ({ email, password }) => {
     role: user.role,
   });
 
-  return { user, token };
+  return {
+    user,
+    token,
+  };
 };

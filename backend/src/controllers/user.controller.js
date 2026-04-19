@@ -2,6 +2,12 @@ import {
   getMyProfileService,
   updateMyProfileService,
   uploadAvatarService,
+  getMySolveStatsService,
+  getMyNotificationsService,
+  getMyNotificationSummaryService,
+  readMyNotificationService,
+  readAllMyNotificationsService,
+  getMyBadgesListService,
 } from "../services/user.service.js";
 
 export const getMyProfileController = async (req, res, next) => {
@@ -46,6 +52,85 @@ export const uploadAvatarController = async (req, res, next) => {
       success: true,
       message: "Avatar uploaded successfully",
       data: user,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMySolveStatsController = async (req, res, next) => {
+  try {
+    const stats = await getMySolveStatsService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: stats,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyNotificationsController = async (req, res, next) => {
+  try {
+    const notifications = await getMyNotificationsService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: notifications,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyNotificationSummaryController = async (req, res, next) => {
+  try {
+    const summary = await getMyNotificationSummaryService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: summary,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const readMyNotificationController = async (req, res, next) => {
+  try {
+    const notification = await readMyNotificationService({
+      userId: req.user.userId,
+      notificationId: req.validated.params.notificationId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Notification marked as read",
+      data: notification,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const readAllMyNotificationsController = async (req, res, next) => {
+  try {
+    const result = await readAllMyNotificationsService(req.user.userId);
+
+    return res.status(200).json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getMyBadgesController = async (req, res, next) => {
+  try {
+    const badges = await getMyBadgesListService(req.user.userId);
+
+    return res.status(200).json({
+      success: true,
+      data: badges,
     });
   } catch (error) {
     next(error);

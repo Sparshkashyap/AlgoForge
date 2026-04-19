@@ -1,44 +1,89 @@
-import { verifyRazorpayWebhookSignature } from "../utils/verifyRazorpayWebhook.js";
-import { applySubscriptionEventService } from "../services/billing.service.js";
+import crypto from "crypto";
+import env from "../config/env.js";
+import { paymentQueue } from "../queues/payment.queue.js";
+import {
+  createPaymentAuditService,
+  getPaymentAuditByEventIdService,
+  markPaymentAuditProcessedService,
+  markPaymentAuditFailedService,
+} from "../services/paymentAudit.service.js";
+import { processRazorpayWebhookEventService } from "../services/billing.service.js";
 
-const resolveTierFromPlanId = (planId) => {
-  if (planId === process.env.RAZORPAY_STANDARD_PLAN_ID) return "STANDARD";
-  if (planId === process.env.RAZORPAY_PRO_PLAN_ID) return "PRO";
-  return "FREE";
+const verifySignature = (rawBody, signature) => {
+  const digest = crypto
+    .createHmac("sha256", env.RAZORPAY_WEBHOOK_SECRET)
+    .update(rawBody)
+    .digest("hex");
+
+  return digest === signature;
 };
 
-export const razorpayWebhookController = async (req, res, next) => {
+export const razorpayWebhookController = async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
     const rawBody = req.rawBody;
 
-    const valid = verifyRazorpayWebhookSignature(rawBody, signature);
+    if (!signature || !rawBody) {
+      return res.status(400).json({
+        success: false,
+        message: "Missing signature or body",
+      });
+    }
 
-    if (!valid) {
+    if (!verifySignature(rawBody, signature)) {
       return res.status(400).json({
         success: false,
         message: "Invalid webhook signature",
       });
     }
 
-    const event = req.body.event;
-    const payload = req.body.payload;
+    const payload = JSON.parse(rawBody);
 
-    if (event?.startsWith("subscription.")) {
-      const entity = payload?.subscription?.entity;
-
-      if (entity?.id) {
-        await applySubscriptionEventService({
-          subscriptionId: entity.id,
-          status: entity.status,
-          plan: resolveTierFromPlanId(entity.plan_id),
-          currentEndAt: entity.current_end,
-        });
-      }
+    const exists = await getPaymentAuditByEventIdService(payload.id);
+    if (exists) {
+      return res.status(200).json({
+        success: true,
+        message: "Duplicate webhook ignored",
+      });
     }
 
-    return res.status(200).json({ success: true });
+    await createPaymentAuditService({
+      eventId: payload.id,
+      type: payload.event,
+      payload,
+      status: "RECEIVED",
+    });
+
+    try {
+      await processRazorpayWebhookEventService(payload);
+
+      await markPaymentAuditProcessedService(payload.id);
+
+      return res.status(200).json({
+        success: true,
+        message: "Webhook processed",
+      });
+    } catch (err) {
+      await markPaymentAuditFailedService({
+        eventId: payload.id,
+        errorMessage: err.message,
+      });
+
+      await paymentQueue.add(
+        "retry-payment-event",
+        { eventId: payload.id },
+        { jobId: `payment-retry:${payload.id}` }
+      );
+
+      return res.status(500).json({
+        success: false,
+        message: "Webhook processing failed",
+      });
+    }
   } catch (error) {
-    next(error);
+    return res.status(500).json({
+      success: false,
+      message: "Unexpected webhook error",
+    });
   }
 };

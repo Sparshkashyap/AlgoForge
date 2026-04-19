@@ -1,13 +1,30 @@
 import express from "express";
+import { authMiddleware } from "../middleware/auth.middleware.js";
+import { validate } from "../middleware/validate.middleware.js";
 import {
-  getDailyQuestionController,
+  getActiveDailyQuestionController,
   markDailyQuestionAttemptController,
 } from "../controllers/dailyQuestion.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
+import { z } from "zod";
 
 const router = express.Router();
 
-router.get("/", getDailyQuestionController);
-router.post("/attempt", authMiddleware, markDailyQuestionAttemptController);
+const markDailyAttemptSchema = z.object({
+  body: z.object({
+    dailyQuestionId: z.string().min(1, "dailyQuestionId is required"),
+    status: z.string().min(1, "status is required"),
+  }),
+  params: z.object({}),
+  query: z.object({}),
+});
+
+router.get("/", getActiveDailyQuestionController);
+
+router.post(
+  "/attempt",
+  authMiddleware,
+  validate(markDailyAttemptSchema),
+  markDailyQuestionAttemptController
+);
 
 export default router;

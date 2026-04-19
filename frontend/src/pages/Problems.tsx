@@ -151,6 +151,7 @@ export default function Problems() {
               {DIFFICULTIES.map((item) => (
                 <button
                   key={item}
+                  type="button"
                   onClick={() => setDifficulty(item)}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
                     difficulty === item
