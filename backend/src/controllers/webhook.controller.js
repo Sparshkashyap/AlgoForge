@@ -4,8 +4,8 @@ import { paymentQueue } from "../queues/payment.queue.js";
 import {
   createPaymentAuditService,
   getPaymentAuditByEventIdService,
-  markPaymentAuditProcessedService,
   markPaymentAuditFailedService,
+  markPaymentAuditProcessedService,
 } from "../services/paymentAudit.service.js";
 import { processRazorpayWebhookEventService } from "../services/billing.service.js";
 
@@ -39,8 +39,8 @@ export const razorpayWebhookController = async (req, res) => {
 
     const payload = JSON.parse(rawBody);
 
-    const exists = await getPaymentAuditByEventIdService(payload.id);
-    if (exists) {
+    const alreadyProcessed = await getPaymentAuditByEventIdService(payload.id);
+    if (alreadyProcessed) {
       return res.status(200).json({
         success: true,
         message: "Duplicate webhook ignored",
@@ -56,23 +56,26 @@ export const razorpayWebhookController = async (req, res) => {
 
     try {
       await processRazorpayWebhookEventService(payload);
-
       await markPaymentAuditProcessedService(payload.id);
 
       return res.status(200).json({
         success: true,
         message: "Webhook processed",
       });
-    } catch (err) {
+    } catch (error) {
       await markPaymentAuditFailedService({
         eventId: payload.id,
-        errorMessage: err.message,
+        errorMessage: error.message,
       });
 
       await paymentQueue.add(
         "retry-payment-event",
-        { eventId: payload.id },
-        { jobId: `payment-retry:${payload.id}` }
+        {
+          eventId: payload.id,
+        },
+        {
+          jobId: `payment-retry:${payload.id}`,
+        }
       );
 
       return res.status(500).json({

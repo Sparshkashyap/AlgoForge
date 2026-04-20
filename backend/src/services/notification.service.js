@@ -75,7 +75,9 @@ export const scheduleContestRemindersService = async ({
   const jobs = [];
 
   for (const offsetMinutes of offsets) {
-    const sendAt = new Date(new Date(startAt).getTime() - offsetMinutes * 60 * 1000);
+    const sendAt = new Date(
+      new Date(startAt).getTime() - offsetMinutes * 60 * 1000
+    );
 
     if (sendAt.getTime() > Date.now()) {
       jobs.push(
@@ -98,9 +100,7 @@ export const scheduleDailyQuestionAssignmentService = async () => {
 export const listMyNotificationsService = async (userId) => {
   return prisma.notification.findMany({
     where: { userId },
-    orderBy: {
-      createdAt: "desc",
-    },
+    orderBy: { createdAt: "desc" },
     take: 50,
   });
 };

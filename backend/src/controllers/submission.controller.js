@@ -7,10 +7,10 @@ import {
 export const createSubmissionController = async (req, res, next) => {
   try {
     const submission = await createSubmissionService({
-      problemId: req.validated.body.problemId,
-      language: req.validated.body.language,
-      code: req.validated.body.code,
       userId: req.user.userId,
+      problemId: req.validated?.body?.problemId ?? req.body.problemId,
+      language: req.validated?.body?.language ?? req.body.language,
+      code: req.validated?.body?.code ?? req.body.code,
     });
 
     return res.status(201).json({
@@ -36,7 +36,7 @@ export const listMySubmissionsController = async (req, res, next) => {
   }
 };
 
-export const getSubmissionStatusController = async (req, res, next) => {
+export const getSubmissionByIdForUserController = async (req, res, next) => {
   try {
     const submission = await getSubmissionByIdForUserService({
       submissionId: req.params.submissionId,

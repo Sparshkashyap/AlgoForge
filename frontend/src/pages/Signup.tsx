@@ -380,7 +380,7 @@ export default function Signup() {
                     <Input
                       id="name"
                       type="text"
-                      placeholder="Your name"
+                      placeholder="Enter your full name"
                       className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
                       value={form.name}
                       onChange={(e) =>
@@ -395,7 +395,7 @@ export default function Signup() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="Enter your email address"
                       className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
                       value={form.email}
                       onChange={(e) =>

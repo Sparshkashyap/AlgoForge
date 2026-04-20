@@ -1,16 +1,15 @@
 import API from "./axios";
 import type { LoginPayload, SignupPayload } from "@/types/auth.types";
 
-export const signupApi = async (
-  payload: SignupPayload & { recaptchaToken: string }
-) => {
+const BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+
+export const signupApi = async (payload: SignupPayload) => {
   const response = await API.post("/auth/signup", payload);
   return response.data;
 };
 
-export const loginApi = async (
-  payload: LoginPayload & { recaptchaToken: string }
-) => {
+export const loginApi = async (payload: LoginPayload) => {
   const response = await API.post("/auth/login", payload);
   return response.data;
 };
@@ -47,14 +46,17 @@ export const resetPasswordApi = async (payload: {
   password: string;
   confirmPassword: string;
 }) => {
-  const response = await API.post("/auth/reset-password-with-otp", payload);
+  const response = await API.post(
+    "/auth/reset-password-with-otp",
+    payload
+  );
   return response.data;
 };
 
 export const startGoogleLogin = () => {
-  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/auth/google`;
+  window.location.href = `${BASE_URL}/auth/google`;
 };
 
 export const startGithubLogin = () => {
-  window.location.href = `${import.meta.env.VITE_API_BASE_URL}/auth/github`;
+  window.location.href = `${BASE_URL}/auth/github`;
 };

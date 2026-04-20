@@ -1,205 +1,161 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Trophy, Clock3, Users, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useParams, Link } from "react-router-dom";
+import { toast } from "react-toastify";
+
 import { Navbar } from "@/components/Navbar";
-import ContestTimer from "@/components/ContestTimer";
-import LeaderboardTable from "@/components/LeaderboardTable";
-import ContestCard from "@/components/ContestCard";
+import { Button } from "@/components/ui/button";
+import { getContestByIdApi, registerForContestApi } from "@/api/contest.api";
+import { useAuth } from "@/context/AuthContext";
+
+type ContestDetails = {
+  id: string;
+  title: string;
+  description?: string;
+  startAt: string;
+  endAt: string;
+  isRegistered: boolean;
+  problems: Array<{
+    id: string;
+    sortOrder: number;
+    problem: {
+      id: string;
+      title: string;
+      slug: string;
+      difficulty: string;
+      tags: string[];
+    };
+  }>;
+};
 
 export default function ContestDetails() {
-  const { id } = useParams();
+  const { contestId = "" } = useParams();
+  const { isAuthenticated } = useAuth();
 
+  const [item, setItem] = useState<ContestDetails | null>(null);
   const [loading, setLoading] = useState(true);
-  const [contest, setContest] = useState<any>(null);
-  const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [relatedContests, setRelatedContests] = useState<any[]>([]);
+  const [registering, setRegistering] = useState(false);
+
+  const load = async () => {
+    try {
+      setLoading(true);
+      const res = await getContestByIdApi(contestId);
+      setItem(res?.data || null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Failed to load contest");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    // Replace this block with your real API call later
-    const mockContest = {
-      id,
-      title: "Weekly Coding Contest",
-      startTime: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
-      durationMinutes: 120,
-      participants: 284,
-      isLive: false,
-      description:
-        "Solve a curated set of interview-style problems under timed pressure and compete on the live leaderboard.",
-    };
+    void load();
+  }, [contestId]);
 
-    const mockLeaderboard = [
-      { id: 1, name: "Aman Sethi", score: 980, solved: 4, rank: 1 },
-      { id: 2, name: "Priya Kulkarni", score: 940, solved: 4, rank: 2 },
-      { id: 3, name: "Rohan Verma", score: 890, solved: 3, rank: 3 },
-      { id: 4, name: "Sparsh", score: 840, solved: 3, rank: 4 },
-    ];
-
-    const mockRelated = [
-      {
-        id: "c2",
-        title: "Beginner Sprint",
-        startTime: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-        durationMinutes: 90,
-        participants: 146,
-        isLive: false,
-      },
-      {
-        id: "c3",
-        title: "Night Contest Arena",
-        startTime: new Date(Date.now() + 1000 * 60 * 60 * 36).toISOString(),
-        durationMinutes: 150,
-        participants: 322,
-        isLive: false,
-      },
-    ];
-
-    setContest(mockContest);
-    setLeaderboard(mockLeaderboard);
-    setRelatedContests(mockRelated);
-    setLoading(false);
-  }, [id]);
-
-  const summary = useMemo(() => {
-    return {
-      participants: contest?.participants ?? 0,
-      duration: contest?.durationMinutes
-        ? `${Math.floor(contest.durationMinutes / 60)}h ${
-            contest.durationMinutes % 60
-          }m`
-        : "-",
-      status: contest?.isLive ? "Live" : "Upcoming",
-    };
-  }, [contest]);
+  const handleRegister = async () => {
+    try {
+      setRegistering(true);
+      await registerForContestApi(contestId);
+      toast.success("Registered successfully");
+      await load();
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message || "Registration failed");
+    } finally {
+      setRegistering(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="container py-8 md:py-10"
-      >
+      <div className="container py-12 md:py-16">
         {loading ? (
-          <div className="rounded-[1.8rem] border border-border/70 bg-card/70 p-8 text-sm text-muted-foreground backdrop-blur-xl">
-            Loading contest details...
+          <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading contest...
+          </div>
+        ) : !item ? (
+          <div className="rounded-3xl border border-border bg-card p-8 text-center">
+            Contest not found
           </div>
         ) : (
-          <>
-            <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-              <div className="spotlight-card overflow-hidden p-6 md:p-8">
-                <div className="feature-glow absolute inset-0 opacity-80" />
-                <div className="relative z-10 max-w-3xl">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-xl">
-                    <Trophy className="h-3.5 w-3.5 text-primary" />
-                    Contest details
-                  </div>
+          <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-[1.8rem] border border-border/70 bg-card/60 p-6">
+              <h1 className="text-4xl font-black">{item.title}</h1>
 
-                  <h1 className="mt-6 font-heading text-4xl font-black leading-tight md:text-6xl">
-                    {contest.title}
-                  </h1>
+              <p className="mt-4 text-sm leading-8 text-muted-foreground">
+                {item.description || "No description"}
+              </p>
 
-                  <p className="mt-4 max-w-2xl text-sm leading-8 text-muted-foreground md:text-base">
-                    {contest.description}
-                  </p>
-                </div>
+              <div className="mt-6 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                <span>Starts: {new Date(item.startAt).toLocaleString()}</span>
+                <span>Ends: {new Date(item.endAt).toLocaleString()}</span>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-                <div className="metric-card">
-                  <div className="flex items-center justify-between">
-                    <Users className="h-5 w-5 text-primary" />
-                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      Players
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    Participants
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-black">
-                    {summary.participants}
-                  </p>
-                </div>
-
-                <div className="metric-card">
-                  <div className="flex items-center justify-between">
-                    <Clock3 className="h-5 w-5 text-accent" />
-                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      Format
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    Duration
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-black">
-                    {summary.duration}
-                  </p>
-                </div>
-
-                <div className="metric-card">
-                  <div className="flex items-center justify-between">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                      Status
-                    </span>
-                  </div>
-                  <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                    State
-                  </p>
-                  <p className="mt-2 font-heading text-3xl font-black">
-                    {summary.status}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-              <ContestTimer
-                targetTime={contest.startTime}
-                label="Contest starts in"
-                completedLabel="Contest is live"
-              />
-
-              <div className="rounded-[1.8rem] border border-border/70 bg-card/80 p-6 backdrop-blur-xl">
-                <h3 className="font-heading text-2xl font-black">
-                  Contest Overview
-                </h3>
-                <p className="mt-4 text-sm leading-8 text-muted-foreground">
-                  Compete under pressure, compare your score on the leaderboard,
-                  and use contests to sharpen repeatable performance rather than
-                  one-off effort.
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <LeaderboardTable
-                users={leaderboard}
-                title="Contest Leaderboard"
-              />
-            </div>
-
-            {relatedContests.length > 0 && (
               <div className="mt-8">
-                <h2 className="font-heading text-3xl font-black">
-                  More contests
-                </h2>
+                <h2 className="text-2xl font-bold">Problems</h2>
 
-                <div className="mt-5 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                  {relatedContests.map((item) => (
-                    <ContestCard
-                      key={item.id}
-                      contest={item}
-                    />
+                <div className="mt-4 grid gap-3">
+                  {item.problems.map((cp, index) => (
+                    <div
+                      key={cp.id}
+                      className="rounded-2xl border border-border/70 bg-background/50 p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Problem {index + 1}
+                          </p>
+                          <p className="mt-1 text-lg font-semibold">
+                            {cp.problem.title}
+                          </p>
+                        </div>
+
+                        <Button asChild variant="outline" className="rounded-xl">
+                          <Link to={`/problems/${cp.problem.slug}`}>
+                            Open
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
-            )}
-          </>
+            </div>
+
+            <div className="rounded-[1.8rem] border border-border/70 bg-card/60 p-6">
+              <h3 className="text-xl font-bold">Your status</h3>
+
+              <p className="mt-4 text-sm leading-7 text-muted-foreground">
+                {item.isRegistered
+                  ? "You are already registered for this contest."
+                  : "Register now to receive reminders and participate."}
+              </p>
+
+              {isAuthenticated && !item.isRegistered && (
+                <Button
+                  className="mt-6 w-full rounded-xl"
+                  onClick={handleRegister}
+                  disabled={registering}
+                >
+                  {registering ? "Registering..." : "Register"}
+                </Button>
+              )}
+
+              {item.isRegistered && (
+                <Button className="mt-6 w-full rounded-xl" disabled>
+                  Registered
+                </Button>
+              )}
+
+              {!isAuthenticated && (
+                <p className="mt-6 text-sm text-muted-foreground">
+                  Login to register for this contest.
+                </p>
+              )}
+            </div>
+          </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

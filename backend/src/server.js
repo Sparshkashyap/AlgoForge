@@ -21,12 +21,22 @@ const startServer = async () => {
     await bootstrapNotificationSchedulers();
     console.log("Background schedulers initialized");
 
-    const server = http.createServer(app);
-    initSocket(server);
+    const httpServer = http.createServer(app);
+    initSocket(httpServer);
 
-    server.listen(env.PORT, () => {
+    httpServer.listen(env.PORT, () => {
       console.log(`Server running on port ${env.PORT}`);
     });
+
+    // graceful shutdown (you were missing this — bad in prod)
+    const shutdown = async () => {
+      console.log("Shutting down server...");
+      await prisma.$disconnect().catch(() => {});
+      process.exit(0);
+    };
+
+    process.on("SIGINT", shutdown);
+    process.on("SIGTERM", shutdown);
   } catch (error) {
     console.error("Server start error:", error);
     await prisma.$disconnect().catch(() => {});

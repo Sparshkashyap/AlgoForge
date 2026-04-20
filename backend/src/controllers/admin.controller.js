@@ -1,24 +1,32 @@
 import {
-  getAdminStatsService,
-  listUsersForAdminService,
-  updateUserRoleService,
   blockUserService,
-  unblockUserService,
-  deleteUserService,
-} from "../services/adminUser.service.js";
-import { getAdminAnalyticsService } from "../services/analytics.service.js";
-import {
+  getAdminDashboardSummaryService,
   listAuditLogsService,
-  listSuspiciousLoginEventsService,
-} from "../services/audit.service.js";
+  listUsersForAdminService,
+  unblockUserService,
+  updateUserRoleService,
+} from "../services/admin.service.js";
 
-export const listUsersForAdminController = async (_req, res, next) => {
+export const getAdminDashboardSummaryController = async (_req, res, next) => {
   try {
-    const users = await listUsersForAdminService();
+    const data = await getAdminDashboardSummaryService();
 
     return res.status(200).json({
       success: true,
-      data: users,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const listUsersForAdminController = async (_req, res, next) => {
+  try {
+    const data = await listUsersForAdminService();
+
+    return res.status(200).json({
+      success: true,
+      data,
     });
   } catch (error) {
     next(error);
@@ -27,18 +35,16 @@ export const listUsersForAdminController = async (_req, res, next) => {
 
 export const updateUserRoleController = async (req, res, next) => {
   try {
-    const user = await updateUserRoleService({
+    const data = await updateUserRoleService({
       actorUserId: req.user.userId,
-      userId: req.params.userId,
-      role: req.validated.body.role,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent") || null,
+      targetUserId: req.validated?.params?.userId ?? req.params.userId,
+      role: req.validated?.body?.role ?? req.body.role,
     });
 
     return res.status(200).json({
       success: true,
-      message: "User role updated successfully",
-      data: user,
+      message: "User role updated",
+      data,
     });
   } catch (error) {
     next(error);
@@ -47,18 +53,16 @@ export const updateUserRoleController = async (req, res, next) => {
 
 export const blockUserController = async (req, res, next) => {
   try {
-    const user = await blockUserService({
+    const data = await blockUserService({
       actorUserId: req.user.userId,
-      userId: req.params.userId,
-      reason: req.validated.body.reason,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent") || null,
+      targetUserId: req.validated?.params?.userId ?? req.params.userId,
+      reason: req.validated?.body?.reason ?? req.body.reason,
     });
 
     return res.status(200).json({
       success: true,
-      message: "User blocked successfully",
-      data: user,
+      message: "User blocked",
+      data,
     });
   } catch (error) {
     next(error);
@@ -67,58 +71,15 @@ export const blockUserController = async (req, res, next) => {
 
 export const unblockUserController = async (req, res, next) => {
   try {
-    const user = await unblockUserService({
+    const data = await unblockUserService({
       actorUserId: req.user.userId,
-      userId: req.params.userId,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent") || null,
+      targetUserId: req.validated?.params?.userId ?? req.params.userId,
     });
 
     return res.status(200).json({
       success: true,
-      message: "User unblocked successfully",
-      data: user,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const deleteUserController = async (req, res, next) => {
-  try {
-    const result = await deleteUserService({
-      actorUserId: req.user.userId,
-      userId: req.params.userId,
-      ipAddress: req.ip,
-      userAgent: req.get("user-agent") || null,
-    });
-
-    return res.status(200).json(result);
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getAdminStatsController = async (_req, res, next) => {
-  try {
-    const stats = await getAdminStatsService();
-
-    return res.status(200).json({
-      success: true,
-      data: stats,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const getAdminAnalyticsController = async (_req, res, next) => {
-  try {
-    const analytics = await getAdminAnalyticsService();
-
-    return res.status(200).json({
-      success: true,
-      data: analytics,
+      message: "User unblocked",
+      data,
     });
   } catch (error) {
     next(error);
@@ -127,24 +88,11 @@ export const getAdminAnalyticsController = async (_req, res, next) => {
 
 export const listAuditLogsController = async (_req, res, next) => {
   try {
-    const logs = await listAuditLogsService();
+    const data = await listAuditLogsService();
 
     return res.status(200).json({
       success: true,
-      data: logs,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const listSuspiciousLoginsController = async (_req, res, next) => {
-  try {
-    const events = await listSuspiciousLoginEventsService();
-
-    return res.status(200).json({
-      success: true,
-      data: events,
+      data,
     });
   } catch (error) {
     next(error);

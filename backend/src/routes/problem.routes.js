@@ -5,7 +5,8 @@ import {
   getProblemByIdForAdminController,
   getProblemBySlugController,
   listAdminProblemsController,
-  listPublishedProblemsController,
+  listProblemsController,
+  listMyProblemsController,
   previewProblemRunController,
   updateProblemController,
 } from "../controllers/problem.controller.js";
@@ -20,11 +21,31 @@ import {
 
 const router = express.Router();
 
-router.get("/", listPublishedProblemsController);
-router.get("/admin/all/list", authMiddleware, adminMiddleware, listAdminProblemsController);
-router.get("/admin/:problemId", authMiddleware, adminMiddleware, getProblemByIdForAdminController);
-router.get("/:slug", getProblemBySlugController);
+/**
+ * IMPORTANT:
+ * static routes before dynamic routes
+ */
 
+// public
+router.get("/", listProblemsController);
+
+router.get(
+  "/admin/all/list",
+  authMiddleware,
+  adminMiddleware,
+  listAdminProblemsController
+);
+
+router.get(
+  "/admin/:problemId",
+  authMiddleware,
+  adminMiddleware,
+  getProblemByIdForAdminController
+);
+
+router.get("/me", authMiddleware, listMyProblemsController);
+
+// preview run
 router.post(
   "/preview-run",
   authMiddleware,
@@ -33,6 +54,7 @@ router.post(
   previewProblemRunController
 );
 
+// protected creator/admin routes
 router.post(
   "/",
   authMiddleware,
@@ -55,5 +77,8 @@ router.delete(
   creatorOrAdminMiddleware,
   deleteProblemController
 );
+
+// dynamic slug route always last
+router.get("/:slug", getProblemBySlugController);
 
 export default router;

@@ -49,21 +49,21 @@ enum AuditAction {
 }
 
 model User {
-  id            String       @id @default(uuid())
-  name          String
-  email         String       @unique
-  password      String?
-  role          UserRole     @default(USER)
-  plan          UserPlan     @default(FREE)
-  provider      AuthProvider @default(LOCAL)
-  providerId    String?
-  avatarUrl     String?
-  solvedCount   Int          @default(0)
-  streak        Int          @default(0)
-  lastSolvedAt  DateTime?
-  lastSeenAt    DateTime?
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           String       @id @default(uuid())
+  name         String
+  email        String       @unique
+  password     String?
+  role         UserRole     @default(USER)
+  plan         UserPlan     @default(FREE)
+  provider     AuthProvider @default(LOCAL)
+  providerId   String?
+  avatarUrl    String?
+  solvedCount  Int          @default(0)
+  streak       Int          @default(0)
+  lastSolvedAt DateTime?
+  lastSeenAt   DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   isBlocked     Boolean   @default(false)
   blockedAt     DateTime?
@@ -74,7 +74,7 @@ model User {
   subscriptionStatus     String?
   currentPeriodEnd       DateTime?
 
-  problems             Problem[]                   @relation("ProblemAuthor")
+  problems             Problem[]                  @relation("ProblemAuthor")
   submissions          Submission[]
   passwordResetTokens  PasswordResetToken[]
   passwordResetOtps    PasswordResetOtp[]
@@ -83,9 +83,9 @@ model User {
   dailyAttempts        UserDailyQuestionAttempt[]
   notifications        Notification[]
   contestRegistrations ContestRegistration[]
-  createdContests      Contest[]                   @relation("ContestAuthor")
-  actedAuditLogs       AuditLog[]                  @relation("AuditActor")
-  targetedAuditLogs    AuditLog[]                  @relation("AuditTarget")
+  createdContests      Contest[]                  @relation("ContestAuthor")
+  actedAuditLogs       AuditLog[]                 @relation("AuditActor")
+  targetedAuditLogs    AuditLog[]                 @relation("AuditTarget")
   loginEvents          LoginEvent[]
 
   @@index([provider, providerId])
@@ -120,7 +120,7 @@ model Problem {
 
   testCases       TestCase[]
   submissions     Submission[]
-  dailyQuestion   DailyQuestion?
+  dailyQuestions  DailyQuestion[] // changed from singular to one-to-many
   contestProblems ContestProblem[]
 
   @@index([difficulty])
@@ -165,6 +165,7 @@ model Submission {
   @@index([verdict])
   @@index([status])
 }
+
 model PasswordResetToken {
   id        String    @id @default(uuid())
   token     String    @unique
@@ -236,7 +237,7 @@ model UserBadge {
 
 model DailyQuestion {
   id         String   @id @default(uuid())
-  problemId  String   @unique
+  problemId  String
   activeDate DateTime @unique
   createdAt  DateTime @default(now())
 
@@ -244,6 +245,7 @@ model DailyQuestion {
   attempts UserDailyQuestionAttempt[]
 
   @@index([activeDate])
+  @@index([problemId]) // added index instead of unique
 }
 
 model UserDailyQuestionAttempt {
@@ -289,7 +291,7 @@ model Contest {
   updatedAt   DateTime @updatedAt
 
   createdById String
-  createdBy   User     @relation("ContestAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy   User   @relation("ContestAuthor", fields: [createdById], references: [id], onDelete: Cascade)
 
   problems      ContestProblem[]
   registrations ContestRegistration[]
@@ -299,10 +301,10 @@ model Contest {
 }
 
 model ContestProblem {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   contestId String
   problemId String
-  sortOrder Int      @default(0)
+  sortOrder Int    @default(0)
 
   contest Contest @relation(fields: [contestId], references: [id], onDelete: Cascade)
   problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
@@ -366,15 +368,15 @@ model LoginEvent {
 }
 
 model PaymentAudit {
-  id          String   @id @default(uuid())
-  eventId     String   @unique
+  id          String    @id @default(uuid())
+  eventId     String    @unique
   type        String
   payload     Json
   status      String
-  retryCount  Int      @default(0)
+  retryCount  Int       @default(0)
   lastError   String?
   processedAt DateTime?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime  @default(now())
 
   @@index([status])
   @@index([createdAt])

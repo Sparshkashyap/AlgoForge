@@ -11,37 +11,39 @@ import {
   getMyBadgesController,
 } from "../controllers/user.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
-import { upload } from "../middleware/upload.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
-import {
-  notificationIdParamSchema,
-  readAllNotificationsSchema,
-} from "../validations/user.validation.js";
+import { z } from "zod";
 
 const router = express.Router();
 
 router.use(authMiddleware);
 
+const notificationIdParamSchema = z.object({
+  params: z.object({
+    notificationId: z.string().min(1, "notificationId is required"),
+  }),
+  body: z.object({}),
+  query: z.object({}),
+});
+
 router.get("/me", getMyProfileController);
-router.patch("/me", updateMyProfileController);
-router.post("/me/avatar", upload.single("avatar"), uploadAvatarController);
+router.put("/me", updateMyProfileController);
 
-router.get("/me/solve-stats", getMySolveStatsController);
-router.get("/me/badges", getMyBadgesController);
+router.post("/avatar", uploadAvatarController);
 
-router.get("/me/notifications", getMyNotificationsController);
-router.get("/me/notifications/summary", getMyNotificationSummaryController);
+router.get("/stats", getMySolveStatsController);
+
+router.get("/notifications", getMyNotificationsController);
+router.get("/notifications/summary", getMyNotificationSummaryController);
 
 router.patch(
-  "/me/notifications/:notificationId/read",
+  "/notifications/:notificationId/read",
   validate(notificationIdParamSchema),
   readMyNotificationController
 );
 
-router.patch(
-  "/me/notifications/read-all",
-  validate(readAllNotificationsSchema),
-  readAllMyNotificationsController
-);
+router.patch("/notifications/read-all", readAllMyNotificationsController);
+
+router.get("/badges", getMyBadgesController);
 
 export default router;

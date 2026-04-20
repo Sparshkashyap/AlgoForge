@@ -1,38 +1,51 @@
 import prisma from "../config/db.js";
+import env from "../config/env.js";
 import { razorpay, getPlanIdForTier } from "./razorpay.service.js";
 
-const getPlan = (sub) => {
-  const note = sub?.notes?.plan;
-  if (["STANDARD", "PRO"].includes(note)) return note;
+const getPlanFromSubscription = (subscriptionEntity) => {
+  const notePlan = subscriptionEntity?.notes?.plan;
+  if (notePlan === "STANDARD" || notePlan === "PRO") {
+    return notePlan;
+  }
 
-  const id = sub?.plan_id;
-  if (id === process.env.RAZORPAY_STANDARD_PLAN_ID) return "STANDARD";
-  if (id === process.env.RAZORPAY_PRO_PLAN_ID) return "PRO";
+  const planId = subscriptionEntity?.plan_id || "";
+
+  if (env.RAZORPAY_STANDARD_PLAN_ID && planId === env.RAZORPAY_STANDARD_PLAN_ID) {
+    return "STANDARD";
+  }
+
+  if (env.RAZORPAY_PRO_PLAN_ID && planId === env.RAZORPAY_PRO_PLAN_ID) {
+    return "PRO";
+  }
 
   return "PRO";
 };
 
-const toDate = (ts) => (ts ? new Date(ts * 1000) : null);
+const toPeriodEndDate = (timestamp) =>
+  timestamp ? new Date(timestamp * 1000) : null;
 
-export const createSubscriptionCheckoutService = async ({
-  userId,
-  tier,
-}) => {
+export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
   if (!["STANDARD", "PRO"].includes(tier)) {
-    const err = new Error("Invalid subscription tier");
-    err.statusCode = 400;
-    throw err;
+    const error = new Error("Invalid subscription tier");
+    error.statusCode = 400;
+    throw error;
   }
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      razorpaySubscriptionId: true,
+      subscriptionStatus: true,
+    },
   });
 
   if (!user) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   const planId = getPlanIdForTier(tier);
@@ -51,13 +64,13 @@ export const createSubscriptionCheckoutService = async ({
     where: { id: userId },
     data: {
       razorpaySubscriptionId: subscription.id,
-      subscriptionStatus: String(subscription.status || "").toUpperCase(),
+      subscriptionStatus: String(subscription.status || "created").toUpperCase(),
     },
   });
 
   return {
     subscriptionId: subscription.id,
-    razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    razorpayKeyId: env.RAZORPAY_KEY_ID,
     plan: tier,
     user: {
       name: user.name,
@@ -67,7 +80,7 @@ export const createSubscriptionCheckoutService = async ({
 };
 
 export const getMyBillingService = async (userId) => {
-  return prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
@@ -77,6 +90,14 @@ export const getMyBillingService = async (userId) => {
       currentPeriodEnd: true,
     },
   });
+
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return user;
 };
 
 export const cancelMySubscriptionService = async (userId) => {
@@ -89,14 +110,16 @@ export const cancelMySubscriptionService = async (userId) => {
   });
 
   if (!user?.razorpaySubscriptionId) {
-    const err = new Error("No active subscription found");
-    err.statusCode = 400;
-    throw err;
+    const error = new Error("No active subscription found");
+    error.statusCode = 400;
+    throw error;
   }
 
   const cancelled = await razorpay.subscriptions.cancel(
     user.razorpaySubscriptionId,
-    { cancel_at_cycle_end: 1 }
+    {
+      cancel_at_cycle_end: 1,
+    }
   );
 
   await prisma.user.update({
@@ -121,14 +144,16 @@ export const activateSubscriptionService = async ({
       plan,
       razorpaySubscriptionId: subscriptionId,
       subscriptionStatus: "ACTIVE",
-      currentPeriodEnd: toDate(currentPeriodEnd),
+      currentPeriodEnd: toPeriodEndDate(currentPeriodEnd),
     },
   });
 };
 
 export const cancelSubscriptionService = async (subscriptionId) => {
   return prisma.user.updateMany({
-    where: { razorpaySubscriptionId: subscriptionId },
+    where: {
+      razorpaySubscriptionId: subscriptionId,
+    },
     data: {
       subscriptionStatus: "CANCELLED",
       plan: "FREE",
@@ -137,38 +162,39 @@ export const cancelSubscriptionService = async (subscriptionId) => {
 };
 
 export const processRazorpayWebhookEventService = async (payload) => {
-  const event = payload.event;
-  const sub = payload?.payload?.subscription?.entity;
+  const eventName = payload?.event;
+  const subscriptionEntity = payload?.payload?.subscription?.entity;
 
-  if (!sub) {
+  if (!subscriptionEntity) {
     throw new Error("Invalid webhook payload");
   }
 
-  switch (event) {
+  switch (eventName) {
     case "subscription.activated":
     case "subscription.charged":
     case "subscription.resumed": {
-      const userId = sub?.notes?.userId;
+      const userId = subscriptionEntity?.notes?.userId;
+
       if (!userId) {
-        throw new Error("Missing userId in notes");
+        throw new Error("Missing userId in webhook notes");
       }
 
       return activateSubscriptionService({
         userId,
-        subscriptionId: sub.id,
-        plan: getPlan(sub),
-        currentPeriodEnd: sub.current_end,
+        subscriptionId: subscriptionEntity.id,
+        plan: getPlanFromSubscription(subscriptionEntity),
+        currentPeriodEnd: subscriptionEntity.current_end,
       });
     }
 
     case "subscription.cancelled":
     case "subscription.completed":
     case "subscription.halted": {
-      if (!sub.id) {
-        throw new Error("Missing subscription id");
+      if (!subscriptionEntity?.id) {
+        throw new Error("Missing subscription id in webhook payload");
       }
 
-      return cancelSubscriptionService(sub.id);
+      return cancelSubscriptionService(subscriptionEntity.id);
     }
 
     default:

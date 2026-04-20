@@ -35,6 +35,15 @@ declare global {
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
+type LoginFormState = {
+  email: string;
+  password: string;
+};
+
+type AuthUser = {
+  role?: string;
+} | null;
+
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
@@ -92,12 +101,17 @@ const loadRecaptcha = () =>
       return;
     }
 
-    const existing = document.querySelector(
+    const existing = document.querySelector<HTMLScriptElement>(
       'script[src^="https://www.google.com/recaptcha/api.js"]'
     );
 
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load reCAPTCHA")),
+        { once: true }
+      );
       return;
     }
 
@@ -110,12 +124,31 @@ const loadRecaptcha = () =>
     document.body.appendChild(script);
   });
 
+function getRedirectPath(role: string, fallback: string) {
+  if (role === "ADMIN") return "/admin-dashboard";
+  if (role === "CREATOR") return "/creator-dashboard";
+  return fallback;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error && typeof error === "object") {
+    const err = error as {
+      response?: { data?: { message?: string } };
+      message?: string;
+    };
+
+    return err.response?.data?.message || err.message || "Login failed";
+  }
+
+  return "Login failed";
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, isAuthenticated, loading, user } = useAuth();
+  const { login, isAuthenticated, loading } = useAuth();
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<LoginFormState>({
     email: "",
     password: "",
   });
@@ -133,7 +166,7 @@ export default function Login() {
     return <Navigate to={from} replace />;
   }
 
-  const getRecaptchaToken = async () => {
+  const getRecaptchaToken = async (): Promise<string> => {
     if (!RECAPTCHA_SITE_KEY) {
       throw new Error("Missing VITE_RECAPTCHA_SITE_KEY");
     }
@@ -141,7 +174,12 @@ export default function Login() {
     await loadRecaptcha();
 
     return new Promise<string>((resolve, reject) => {
-      window.grecaptcha?.ready(async () => {
+      if (!window.grecaptcha) {
+        reject(new Error("reCAPTCHA is not available"));
+        return;
+      }
+
+      window.grecaptcha.ready(async () => {
         try {
           const token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, {
             action: "login",
@@ -163,30 +201,25 @@ export default function Login() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
+    if (submitting) return;
+
     try {
       setSubmitting(true);
 
       const recaptchaToken = await getRecaptchaToken();
 
-      await login({
-        ...form,
+      const nextUser = (await login({
+        email: form.email.trim(),
+        password: form.password,
         recaptchaToken,
-      });
+      })) as AuthUser;
 
       toast.success("Welcome back");
 
-      const role = String(user?.role ?? "");
-      if (role === "ADMIN") {
-        navigate("/admin-dashboard", { replace: true });
-      } else if (role === "CREATOR") {
-        navigate("/creator-dashboard", { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || error?.message || "Login failed"
-      );
+      const role = String(nextUser?.role ?? "");
+      navigate(getRedirectPath(role, from), { replace: true });
+    } catch (error) {
+      toast.error(getErrorMessage(error));
     } finally {
       setSubmitting(false);
     }
@@ -409,11 +442,14 @@ export default function Login() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="Enter your email address"
                       className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
                       value={form.email}
                       onChange={(e) =>
-                        setForm((prev) => ({ ...prev, email: e.target.value }))
+                        setForm((prev) => ({
+                          ...prev,
+                          email: e.target.value,
+                        }))
                       }
                       required
                     />
@@ -449,6 +485,9 @@ export default function Login() {
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
+                        aria-label={
+                          showPassword ? "Hide password" : "Show password"
+                        }
                       >
                         {showPassword ? (
                           <EyeOff className="h-5 w-5" />

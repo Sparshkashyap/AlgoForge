@@ -14,7 +14,7 @@ import { createAuditLogService } from "../services/audit.service.js";
 export const signupController = async (req, res, next) => {
   try {
     const { user, token } = await signupService({
-      ...req.validated.body,
+      ...req.body,
       remoteIp: req.ip,
     });
 
@@ -33,7 +33,7 @@ export const signupController = async (req, res, next) => {
 export const loginController = async (req, res, next) => {
   try {
     const { user, token } = await loginService({
-      ...req.validated.body,
+      ...req.body,
       remoteIp: req.ip,
       userAgent: req.get("user-agent") || null,
     });

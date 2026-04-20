@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { LogOut, Menu, Settings, Sparkles, UserCircle2 } from "lucide-react";
+import {
+  LogOut,
+  Menu,
+  Settings,
+  Sparkles,
+  UserCircle2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ModeToggle } from "@/components/ModeToggle";
@@ -8,12 +14,13 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { UserNav } from "@/components/UserNav";
+import NotificationBell from "@/components/NotificationBell";
 import { toast } from "react-toastify";
 
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Problems", to: "/problems" },
-  { label: "Pricing", to: "/pricing" },
+  { label: "Pricing", to: "/upgrade" },
   { label: "Contests", to: "/contests" },
 ];
 
@@ -86,7 +93,9 @@ export function Navbar() {
                   />
                 )}
 
-                <span className={`relative z-10 ${active ? "text-foreground" : ""}`}>
+                <span
+                  className={`relative z-10 ${active ? "text-foreground" : ""}`}
+                >
                   <NavLinkText label={item.label} />
                 </span>
 
@@ -103,7 +112,12 @@ export function Navbar() {
         <div className="hidden items-center gap-3 md:flex">
           <ModeToggle />
 
-          {!isAuthenticated ? (
+          {isAuthenticated ? (
+            <>
+              <NotificationBell />
+              <UserNav />
+            </>
+          ) : (
             <>
               <Link to="/login">
                 <Button
@@ -123,20 +137,19 @@ export function Navbar() {
                 </Button>
               </Link>
             </>
-          ) : (
-            <UserNav />
           )}
         </div>
 
         <div className="flex items-center gap-2 md:hidden">
           <ModeToggle />
+          {isAuthenticated ? <NotificationBell /> : null}
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
               <Button
                 variant="outline"
                 size="icon"
-                className="rounded-full border-border/70 bg-card/70"
+                className="rounded-full border-border/70 bg-card/80"
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -144,9 +157,9 @@ export function Navbar() {
 
             <SheetContent
               side="right"
-              className="w-[300px] border-border/70 bg-background/95 backdrop-blur-2xl"
+              className="w-[86vw] border-l border-border/70 bg-background/96 backdrop-blur-2xl"
             >
-              <div className="mt-10 flex flex-col gap-3">
+              <div className="mt-8 flex flex-col gap-3">
                 <div className="mb-2">
                   <BrandLogo />
                 </div>
@@ -154,7 +167,7 @@ export function Navbar() {
                 {isAuthenticated && user ? (
                   <div className="mb-2 rounded-2xl border border-border/70 bg-card/60 p-4">
                     <p className="font-semibold text-foreground">{user.name}</p>
-                    <p className="mt-1 text-sm text-muted-foreground break-all">
+                    <p className="mt-1 break-all text-sm text-muted-foreground">
                       {user.email}
                     </p>
                   </div>
@@ -195,6 +208,10 @@ export function Navbar() {
                       Settings
                     </Link>
 
+                    <div className="mt-2">
+                      <UserNav />
+                    </div>
+
                     <Button
                       type="button"
                       variant="outline"
@@ -208,13 +225,18 @@ export function Navbar() {
                 ) : (
                   <>
                     <Link to="/login" onClick={() => setOpen(false)}>
-                      <Button variant="outline" className="mt-2 w-full rounded-full">
+                      <Button
+                        variant="outline"
+                        className="mt-2 w-full rounded-2xl"
+                      >
                         Sign In
                       </Button>
                     </Link>
 
                     <Link to={actionLink} onClick={() => setOpen(false)}>
-                      <Button className="w-full rounded-full">{actionLabel}</Button>
+                      <Button className="w-full rounded-2xl">
+                        {actionLabel}
+                      </Button>
                     </Link>
                   </>
                 )}

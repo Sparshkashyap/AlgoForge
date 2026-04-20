@@ -2,7 +2,8 @@ import express from "express";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import {
-  getActiveDailyQuestionController,
+  getMyDailyQuestionAttemptController,
+  getTodayDailyQuestionController,
   markDailyQuestionAttemptController,
 } from "../controllers/dailyQuestion.controller.js";
 import { z } from "zod";
@@ -18,7 +19,13 @@ const markDailyAttemptSchema = z.object({
   query: z.object({}),
 });
 
-router.get("/", getActiveDailyQuestionController);
+router.get("/today", getTodayDailyQuestionController);
+
+router.get(
+  "/attempt/:dailyQuestionId",
+  authMiddleware,
+  getMyDailyQuestionAttemptController
+);
 
 router.post(
   "/attempt",

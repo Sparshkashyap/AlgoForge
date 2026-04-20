@@ -1,12 +1,22 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
-import { Edit, Trash2, Crown, PlusSquare, FileText, Loader2 } from "lucide-react";
+import {
+  Edit,
+  Trash2,
+  Crown,
+  PlusSquare,
+  FileText,
+  Loader2,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
 import { useAuth } from "@/context/AuthContext";
-import { deleteProblemApi, getAdminProblemsApi } from "@/api/adminProblem.api";
+import {
+  deleteProblemApi,
+  getAdminProblemsApi,
+} from "@/api/adminProblem.api";
 import { Button } from "@/components/ui/button";
 import type { Problem } from "@/types/problem.types";
 
@@ -68,8 +78,8 @@ export default function ManageProblems() {
                   Manage Problems
                 </h1>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Review, edit, and remove problems from one clean control surface.
-                  Weak content hurts trust fast, so keep this list tight.
+                  Review, edit, and remove problems from one clean control
+                  surface.
                 </p>
               </div>
 
@@ -90,7 +100,7 @@ export default function ManageProblems() {
               </div>
             ) : problems.length === 0 ? (
               <div className="rounded-[1.8rem] border border-border/70 bg-card/75 p-8 text-sm text-muted-foreground backdrop-blur-xl">
-                No problems found. Create your first one properly instead of dumping filler.
+                No problems found.
               </div>
             ) : (
               <div className="grid gap-4">
@@ -106,16 +116,16 @@ export default function ManageProblems() {
                             <FileText className="h-4 w-4" />
                           </div>
 
-                          <h3 className="font-heading text-xl font-bold leading-tight">
+                          <h3 className="font-heading text-xl font-bold">
                             {problem.title}
                           </h3>
 
-                          {problem.isPremium ? (
+                          {problem.isPremium && (
                             <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400">
                               <Crown className="h-3 w-3" />
                               Premium
                             </span>
-                          ) : null}
+                          )}
 
                           <span
                             className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
@@ -126,41 +136,14 @@ export default function ManageProblems() {
                           >
                             {problem.isPublished ? "Published" : "Draft"}
                           </span>
-
-                          {problem.difficulty ? (
-                            <span
-                              className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                problem.difficulty === "Easy"
-                                  ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                                  : problem.difficulty === "Medium"
-                                  ? "border-amber-500/20 bg-amber-500/10 text-amber-400"
-                                  : "border-rose-500/20 bg-rose-500/10 text-rose-400"
-                              }`}
-                            >
-                              {problem.difficulty}
-                            </span>
-                          ) : null}
                         </div>
 
-                        <p className="mt-3 max-w-3xl text-sm leading-7 text-muted-foreground line-clamp-3">
+                        <p className="mt-3 text-sm text-muted-foreground line-clamp-3">
                           {problem.description}
                         </p>
-
-                        {problem.tags?.length ? (
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {problem.tags.slice(0, 5).map((tag) => (
-                              <span
-                                key={tag}
-                                className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-[11px] uppercase tracking-[0.12em] text-muted-foreground"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
                       </div>
 
-                      <div className="flex shrink-0 flex-wrap items-center gap-3">
+                      <div className="flex gap-3">
                         <Link to={`/create-problem/${problem.id}`}>
                           <Button variant="outline" className="rounded-xl">
                             <Edit className="mr-2 h-4 w-4" />

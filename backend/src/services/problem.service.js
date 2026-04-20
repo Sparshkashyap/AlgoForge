@@ -24,6 +24,55 @@ const buildProblemData = (payload, creatorUserId, slug) => ({
   createdById: creatorUserId,
 });
 
+export const listProblemsService = async () => {
+  return prisma.problem.findMany({
+    where: { isPublished: true },
+    select: {
+      id: true,
+      title: true,
+      slug: true,
+      difficulty: true,
+      tags: true,
+      isPremium: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
+export const getProblemBySlugService = async (slug, viewer = null) => {
+  const problem = await prisma.problem.findFirst({
+    where: { slug, isPublished: true },
+    include: {
+      testCases: {
+        orderBy: { createdAt: "asc" },
+      },
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!problem) {
+    const error = new Error("Problem not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const hasPremiumAccess =
+    !problem.isPremium ||
+    viewer?.role === "ADMIN" ||
+    ["STANDARD", "PRO"].includes(viewer?.plan);
+
+  return {
+    ...problem,
+    hasPremiumAccess,
+  };
+};
+
 export const createProblemService = async (payload, creatorUserId) => {
   const slug = generateProblemSlug(payload.title);
 
@@ -41,10 +90,10 @@ export const createProblemService = async (payload, creatorUserId) => {
     data: {
       ...buildProblemData(payload, creatorUserId, slug),
       testCases: {
-        create: payload.testCases.map((testCase) => ({
-          input: testCase.input,
-          expected: testCase.expected,
-          isHidden: testCase.isHidden ?? true,
+        create: payload.testCases.map((tc) => ({
+          input: tc.input,
+          expected: tc.expected,
+          isHidden: tc.isHidden ?? true,
         })),
       },
     },
@@ -118,10 +167,10 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
     data: {
       ...buildProblemData(payload, existing.createdById, slug),
       testCases: {
-        create: payload.testCases.map((testCase) => ({
-          input: testCase.input,
-          expected: testCase.expected,
-          isHidden: testCase.isHidden ?? true,
+        create: payload.testCases.map((tc) => ({
+          input: tc.input,
+          expected: tc.expected,
+          isHidden: tc.isHidden ?? true,
         })),
       },
     },
@@ -188,6 +237,13 @@ export const deleteProblemService = async (problemId, requesterUserId) => {
   };
 };
 
+export const listMyCreatedProblemsService = async (userId) => {
+  return prisma.problem.findMany({
+    where: { createdById: userId },
+    orderBy: { createdAt: "desc" },
+  });
+};
+
 export const previewProblemRunService = async ({
   language,
   code,
@@ -207,89 +263,6 @@ export const previewProblemRunService = async ({
   });
 };
 
-export const listPublishedProblemsService = async () => {
-  return prisma.problem.findMany({
-    where: { isPublished: true },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      description: true,
-      difficulty: true,
-      tags: true,
-      constraints: true,
-      isPremium: true,
-      sampleInput: true,
-      sampleOutput: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-};
-
-export const getProblemBySlugService = async (slug, viewer = null) => {
-  const problem = await prisma.problem.findFirst({
-    where: {
-      slug,
-      isPublished: true,
-    },
-    include: {
-      testCases: {
-        orderBy: { createdAt: "asc" },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
-
-  if (!problem) {
-    const error = new Error("Problem not found");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const hasPremiumAccess =
-    !problem.isPremium ||
-    viewer?.role === "ADMIN" ||
-    ["STANDARD", "PRO"].includes(viewer?.plan);
-
-  return {
-    id: problem.id,
-    title: problem.title,
-    slug: problem.slug,
-    description: problem.description,
-    difficulty: problem.difficulty,
-    tags: problem.tags,
-    constraints: problem.constraints,
-    starterCode: problem.starterCode,
-    sampleInput: problem.sampleInput,
-    sampleOutput: problem.sampleOutput,
-    explanation: problem.explanation,
-    languageTemplates: problem.languageTemplates,
-    referenceSolutions: undefined,
-    driverCode: undefined,
-    isPremium: problem.isPremium,
-    hasPremiumAccess,
-    boilerplateMode: problem.boilerplateMode,
-    createdAt: problem.createdAt,
-    updatedAt: problem.updatedAt,
-    createdBy: problem.createdBy,
-    testCases: problem.testCases.map((tc) => ({
-      id: tc.id,
-      input: tc.input,
-      expected: tc.expected,
-      isHidden: tc.isHidden,
-    })),
-  };
-};
 
 export const getProblemByIdForAdminService = async (problemId) => {
   const problem = await prisma.problem.findUnique({

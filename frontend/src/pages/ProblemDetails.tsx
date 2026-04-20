@@ -18,6 +18,7 @@ import type { Problem } from "@/types/problem.types";
 import type { Submission } from "@/types/submission.types";
 import { fireCenterConfetti } from "@/components/ConfettiBurst";
 import ProblemWorkspace from "@/components/ProblemWorkspace";
+import { useSubmission } from "@/hooks/useSubmission";
 
 type SupportedLanguage = "javascript" | "python" | "cpp" | "java" | "c";
 
@@ -73,8 +74,15 @@ function formatTimer(totalSeconds: number) {
   )}`;
 }
 
-const isAccepted = (item: Submission) =>
-  (item.verdict || item.status) === "Accepted";
+const isAccepted = (item: Submission) => {
+  const value = String(item.verdict || item.status || "").toLowerCase();
+  return value === "accepted";
+};
+
+const isFinalSubmissionState = (item?: Submission | null) => {
+  const status = String(item?.status || "").toUpperCase();
+  return ["COMPLETED", "FAILED"].includes(status);
+};
 
 export default function ProblemDetails() {
   const { slug } = useParams();
@@ -89,6 +97,9 @@ export default function ProblemDetails() {
 
   const [runResult, setRunResult] = useState<Submission | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
+  const [queuedSubmissionId, setQueuedSubmissionId] = useState<string | null>(
+    null
+  );
   const [previousSubmissions, setPreviousSubmissions] = useState<Submission[]>(
     []
   );
@@ -99,6 +110,8 @@ export default function ProblemDetails() {
 
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+
+  const liveSubmission = useSubmission(queuedSubmissionId).submission;
 
   const blockedPremium = problem?.isPremium && !problem?.hasPremiumAccess;
 
@@ -168,7 +181,36 @@ export default function ProblemDetails() {
         setPreviousSubmissions(filtered);
       })
       .catch(() => {});
-  }, [user, slug, submission]);
+  }, [user, slug]);
+
+  useEffect(() => {
+    if (!liveSubmission) return;
+
+    setSubmission(liveSubmission);
+
+    if (isFinalSubmissionState(liveSubmission)) {
+      setSubmitting(false);
+      setQueuedSubmissionId(null);
+
+      if (isAccepted(liveSubmission)) {
+        fireCenterConfetti();
+        toast.success("Accepted");
+      } else if (String(liveSubmission.status).toUpperCase() === "FAILED") {
+        toast.error("Submission failed");
+      } else {
+        toast.info(liveSubmission.verdict || liveSubmission.status);
+      }
+
+      getMySubmissionsApi()
+        .then((data) => {
+          const filtered = (data.data || []).filter(
+            (item: Submission) => item.problem?.slug === slug
+          );
+          setPreviousSubmissions(filtered);
+        })
+        .catch(() => {});
+    }
+  }, [liveSubmission, slug]);
 
   const handleRun = async () => {
     if (!problem) return;
@@ -238,16 +280,23 @@ export default function ProblemDetails() {
       });
 
       setSubmission(data.data);
+      setQueuedSubmissionId(data.data?.id || null);
 
-      if (isAccepted(data.data)) {
+      const queuedStatus = String(data.data?.status || "").toUpperCase();
+
+      if (queuedStatus === "QUEUED" || queuedStatus === "PROCESSING") {
+        toast.success("Submission queued");
+      } else if (isAccepted(data.data)) {
+        setSubmitting(false);
         fireCenterConfetti();
+        toast.success("Accepted");
+      } else {
+        setSubmitting(false);
+        toast.info(data.data?.verdict || data.data?.status || "Submitted");
       }
-
-      toast.success(`Verdict: ${data.data.verdict || data.data.status}`);
     } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Submission failed");
-    } finally {
       setSubmitting(false);
+      toast.error(error?.response?.data?.message || "Submission failed");
     }
   };
 
@@ -338,8 +387,8 @@ export default function ProblemDetails() {
                         problem.difficulty === "Easy"
                           ? "bg-emerald-500/12 text-emerald-400"
                           : problem.difficulty === "Medium"
-                          ? "bg-amber-500/12 text-amber-400"
-                          : "bg-rose-500/12 text-rose-400"
+                            ? "bg-amber-500/12 text-amber-400"
+                            : "bg-rose-500/12 text-rose-400"
                       }`}
                     >
                       {problem.difficulty}

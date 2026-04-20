@@ -15,12 +15,17 @@ export const initSocket = (httpServer) => {
     socket.on("join", (userId) => {
       if (userId) {
         socket.join(String(userId));
+        socket.join(`user:${userId}`);
       }
     });
 
-    socket.on("disconnect", () => {
-      // noop
+    socket.on("join:user", (userId) => {
+      if (userId) {
+        socket.join(`user:${userId}`);
+      }
     });
+
+    socket.on("disconnect", () => {});
   });
 
   return io;
@@ -30,5 +35,6 @@ export const getIO = () => {
   if (!io) {
     throw new Error("Socket.IO not initialized");
   }
+
   return io;
 };

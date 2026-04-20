@@ -1,160 +1,60 @@
-// import {
-//   createContext,
-//   useCallback,
-//   useContext,
-//   useEffect,
-//   useMemo,
-//   useState,
-//   type ReactNode,
-// } from "react";
-// import { loginApi, logoutApi, meApi, signupApi } from "@/api/auth.api";
-// import type { LoginPayload, SignupPayload } from "@/types/auth.types";
-// import type { User } from "@/types/user.types";
-
-// type AuthContextType = {
-//   user: User | null;
-//   loading: boolean;
-//   isAuthenticated: boolean;
-//   signup: (payload: SignupPayload) => Promise<User>;
-//   login: (payload: LoginPayload) => Promise<User>;
-//   logout: () => Promise<void>;
-//   refreshMe: () => Promise<void>;
-// };
-
-// const AuthContext = createContext<AuthContextType | null>(null);
-
-// export const AuthProvider = ({ children }: { children: ReactNode }) => {
-//   const [user, setUser] = useState<User | null>(null);
-//   const [loading, setLoading] = useState(true);
-
-//   const refreshMe = useCallback(async () => {
-//     try {
-//       const response = await meApi();
-//       setUser(response.data ?? null);
-//     } catch {
-//       setUser(null);
-//     }
-//   }, []);
-
-//   useEffect(() => {
-//     const bootstrap = async () => {
-//       try {
-//         await refreshMe();
-//       } finally {
-//         setLoading(false);
-//       }
-//     };
-
-//     void bootstrap();
-//   }, [refreshMe]);
-
-//   const signup = async (payload: SignupPayload) => {
-//     const response = await signupApi(payload);
-
-//     if (response.data) {
-//       setUser(response.data);
-//       return response.data;
-//     }
-
-//     await refreshMe();
-
-//     const me = await meApi();
-//     setUser(me.data ?? null);
-//     return me.data;
-//   };
-
-//   const login = async (payload: LoginPayload) => {
-//     const response = await loginApi(payload);
-
-//     if (response.data) {
-//       setUser(response.data);
-//       return response.data;
-//     }
-
-//     await refreshMe();
-
-//     const me = await meApi();
-//     setUser(me.data ?? null);
-//     return me.data;
-//   };
-
-//   const logout = async () => {
-//     try {
-//       await logoutApi();
-//     } finally {
-//       setUser(null);
-//     }
-//   };
-
-//   const value = useMemo(
-//     () => ({
-//       user,
-//       loading,
-//       isAuthenticated: Boolean(user),
-//       signup,
-//       login,
-//       logout,
-//       refreshMe,
-//     }),
-//     [user, loading, refreshMe]
-//   );
-
-//   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-// };
-
-// export const useAuth = () => {
-//   const value = useContext(AuthContext);
-
-//   if (!value) {
-//     throw new Error("useAuth must be used inside AuthProvider");
-//   }
-
-//   return value;
-// };
-
-
-
-
 import {
   createContext,
   useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
-  type ReactNode,
 } from "react";
 import { loginApi, logoutApi, meApi, signupApi } from "@/api/auth.api";
 import type { LoginPayload, SignupPayload } from "@/types/auth.types";
 import type { User } from "@/types/user.types";
+import socket from "@/lib/socket";
 
-type AuthContextType = {
+type AuthContextValue = {
   user: User | null;
-  loading: boolean;
   isAuthenticated: boolean;
-  signup: (payload: SignupPayload) => Promise<User>;
+  loading: boolean;
   login: (payload: LoginPayload) => Promise<User>;
+  signup: (payload: SignupPayload) => Promise<User>;
   logout: () => Promise<void>;
-  refreshMe: () => Promise<void>;
+  refreshMe: () => Promise<User | null>;
 };
 
-const AuthContext = createContext<AuthContextType | null>(null);
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const joinedUserIdRef = useRef<string | null>(null);
 
   const refreshMe = useCallback(async () => {
     try {
-      const response = await meApi();
-      setUser(response.data ?? null);
+      const res = await meApi();
+      const nextUser = res?.data ?? null;
+      setUser(nextUser);
+      return nextUser;
     } catch {
       setUser(null);
+      return null;
     }
   }, []);
 
+  const resolveAuthenticatedUser = useCallback(async (): Promise<User> => {
+    const res = await meApi();
+    const nextUser = res?.data ?? null;
+
+    if (!nextUser) {
+      throw new Error("Authenticated user data could not be loaded.");
+    }
+
+    setUser(nextUser);
+    return nextUser;
+  }, []);
+
   useEffect(() => {
-    const bootstrap = async () => {
+    const boot = async () => {
       try {
         await refreshMe();
       } finally {
@@ -162,67 +62,96 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     };
 
-    void bootstrap();
+    void boot();
   }, [refreshMe]);
 
-  const signup = async (payload: SignupPayload) => {
-    const response = await signupApi(payload);
+  // socket handling (IMPORTANT - keep this)
+  useEffect(() => {
+    if (!user?.id) {
+      joinedUserIdRef.current = null;
+      return;
+    }
 
-    if (response.data) {
-      setUser(response.data);
-      return response.data;
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    if (joinedUserIdRef.current !== user.id) {
+      socket.emit("join", user.id);
+      joinedUserIdRef.current = user.id;
+    }
+
+    return () => {
+      if (joinedUserIdRef.current === user.id) {
+        socket.emit("leave", user.id);
+        joinedUserIdRef.current = null;
+      }
+    };
+  }, [user?.id]);
+
+  const login = useCallback(async (payload: LoginPayload) => {
+    const res = await loginApi(payload);
+
+    if (res?.data) {
+      setUser(res.data);
+      return res.data;
     }
 
     await refreshMe();
-    const me = await meApi();
-    setUser(me.data ?? null);
-    return me.data;
-  };
+    return resolveAuthenticatedUser();
+  }, [refreshMe, resolveAuthenticatedUser]);
 
-  const login = async (payload: LoginPayload) => {
-    const response = await loginApi(payload);
+  const signup = useCallback(async (payload: SignupPayload) => {
+    const res = await signupApi(payload);
 
-    if (response.data) {
-      setUser(response.data);
-      return response.data;
+    if (res?.data) {
+      setUser(res.data);
+      return res.data;
     }
 
     await refreshMe();
-    const me = await meApi();
-    setUser(me.data ?? null);
-    return me.data;
-  };
+    return resolveAuthenticatedUser();
+  }, [refreshMe, resolveAuthenticatedUser]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await logoutApi();
     } finally {
-      setUser(null);
-    }
-  };
+      if (user?.id && socket.connected) {
+        socket.emit("leave", user.id);
+      }
 
-  const value = useMemo(
+      joinedUserIdRef.current = null;
+      setUser(null);
+
+      if (socket.connected) {
+        socket.disconnect();
+      }
+    }
+  }, [user?.id]);
+
+  const value = useMemo<AuthContextValue>(
     () => ({
       user,
+      isAuthenticated: !!user,
       loading,
-      isAuthenticated: Boolean(user),
-      signup,
       login,
+      signup,
       logout,
       refreshMe,
     }),
-    [user, loading, refreshMe]
+    [user, loading, login, signup, logout, refreshMe]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-};
+}
 
-export const useAuth = () => {
-  const value = useContext(AuthContext);
+export function useAuth() {
+  const ctx = useContext(AuthContext);
 
-  if (!value) {
+  if (!ctx) {
     throw new Error("useAuth must be used inside AuthProvider");
   }
 
-  return value;
-};
+  return ctx;
+}

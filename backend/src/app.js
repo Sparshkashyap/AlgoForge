@@ -22,6 +22,7 @@ import exportRoutes from "./routes/export.routes.js";
 import billingRoutes from "./routes/billing.routes.js";
 import webhookRoutes from "./routes/webhook.routes.js";
 import contestRoutes from "./routes/contest.routes.js";
+import notificationRoutes from "./routes/notification.routes.js";
 
 import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
@@ -30,6 +31,7 @@ const app = express();
 
 app.set("trust proxy", 1);
 
+// CORS
 app.use(
   cors({
     origin: env.CLIENT_URL,
@@ -37,10 +39,12 @@ app.use(
   })
 );
 
+// Security + logs
 app.use(helmet());
 app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 app.use(cookieParser());
 
+// Sessions + passport
 app.use(
   session({
     secret: env.SESSION_SECRET,
@@ -57,7 +61,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ⚠️ Razorpay webhook MUST come before json parser
+// ⚠️ Razorpay webhook MUST come BEFORE json parser
 app.use(
   "/api/webhooks/razorpay",
   express.raw({
@@ -70,9 +74,11 @@ app.use(
   webhookRoutes
 );
 
+// Body parsers
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
+// Rate limiting AFTER body parse (better for real-world payload handling)
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -82,28 +88,29 @@ app.use(
   })
 );
 
-// Health + root
-app.get("/", (_req, res) =>
-  res.status(200).json({
+// Health routes
+app.get("/", (_req, res) => {
+  return res.status(200).json({
     success: true,
     message: "AlgoForge API running",
-  })
-);
+  });
+});
 
 app.get("/health", async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
-    res.status(200).json({
+
+    return res.status(200).json({
       success: true,
       message: "AlgoForge API healthy",
       env: env.NODE_ENV,
     });
-  } catch (err) {
-    next(err);
+  } catch (error) {
+    next(error);
   }
 });
 
-// Routes
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/problems", problemRoutes);
 app.use("/api/submissions", submissionRoutes);
@@ -115,8 +122,9 @@ app.use("/api/daily-question", dailyQuestionRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/contests", contestRoutes);
+app.use("/api/notifications", notificationRoutes);
 
-// Error handling
+// Errors
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 

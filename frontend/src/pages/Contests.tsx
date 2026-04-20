@@ -1,114 +1,128 @@
 import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import { Trophy, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { CalendarDays, Trophy } from "lucide-react";
+import { toast } from "react-toastify";
+
 import { Navbar } from "@/components/Navbar";
-import ContestCard from "@/components/ContestCard";
+import { listContestsApi } from "@/api/contest.api";
+import { Button } from "@/components/ui/button";
+
+type Contest = {
+  id: string;
+  title: string;
+  description?: string;
+  startAt: string;
+  endAt: string;
+  problems: Array<{
+    id: string;
+    problem: {
+      id: string;
+      title: string;
+      slug: string;
+      difficulty: string;
+    };
+  }>;
+  registrations: Array<{ id: string }>;
+};
 
 export default function Contests() {
+  const [items, setItems] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
-  const [contests, setContests] = useState<any[]>([]);
 
   useEffect(() => {
-    // Replace with real API
-    const mock = [
-      {
-        id: "c1",
-        title: "Weekly Coding Contest",
-        startTime: new Date(Date.now() + 1000 * 60 * 60 * 6).toISOString(),
-        durationMinutes: 120,
-        participants: 284,
-        isLive: false,
-      },
-      {
-        id: "c2",
-        title: "Beginner Sprint",
-        startTime: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString(),
-        durationMinutes: 90,
-        participants: 146,
-        isLive: false,
-      },
-      {
-        id: "c3",
-        title: "Night Contest Arena",
-        startTime: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        durationMinutes: 150,
-        participants: 322,
-        isLive: true,
-      },
-    ];
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await listContestsApi();
+        setItems(res?.data || []);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message || "Failed to load contests"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    setContests(mock);
-    setLoading(false);
+    void load();
   }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="container py-10"
-      >
-        {/* HEADER */}
-        <div className="spotlight-card p-6 md:p-8">
-          <div className="feature-glow absolute inset-0 opacity-80" />
-          <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-xl">
-              <Trophy className="h-3.5 w-3.5 text-primary" />
-              Contests
-            </div>
-
-            <h1 className="mt-6 font-heading text-4xl font-black md:text-5xl">
-              Compete. Repeat. Improve.
-            </h1>
-
-            <p className="mt-4 text-sm leading-8 text-muted-foreground md:text-base">
-              Timed contests designed to simulate real pressure. Track performance,
-              compare rankings, and build consistency through repetition.
-            </p>
+      <div className="container py-12 md:py-16">
+        <div className="rounded-[2rem] border border-border/70 bg-card/60 p-6 md:p-8">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/50 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+            <Trophy className="h-3.5 w-3.5 text-primary" />
+            Contests
           </div>
+
+          <h1 className="mt-6 font-heading text-4xl font-black leading-tight md:text-5xl">
+            Compete with a clear schedule.
+          </h1>
         </div>
 
-        {/* LIST */}
-        <div className="mt-10">
+        <div className="mt-8">
           {loading ? (
             <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
               Loading contests...
             </div>
-          ) : contests.length === 0 ? (
-            <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
-              No contests available right now.
+          ) : items.length === 0 ? (
+            <div className="rounded-3xl border border-border bg-card p-8 text-center">
+              <CalendarDays className="mx-auto h-8 w-8 text-muted-foreground" />
+              <p className="mt-4 text-base font-medium">
+                No contests available
+              </p>
             </div>
           ) : (
-            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-              {contests.map((contest) => (
-                <ContestCard key={contest.id} contest={contest} />
+            <div className="grid gap-4">
+              {items.map((contest) => (
+                <div
+                  key={contest.id}
+                  className="rounded-[1.5rem] border border-border/70 bg-card/60 p-5"
+                >
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-2xl font-bold">
+                        {contest.title}
+                      </h2>
+
+                      <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                        {contest.description || "No description"}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
+                        <span>
+                          Starts:{" "}
+                          {new Date(contest.startAt).toLocaleString()}
+                        </span>
+                        <span>
+                          Ends:{" "}
+                          {new Date(contest.endAt).toLocaleString()}
+                        </span>
+                        <span>
+                          Problems: {contest.problems?.length || 0}
+                        </span>
+                        <span>
+                          Registrations:{" "}
+                          {contest.registrations?.length || 0}
+                        </span>
+                      </div>
+                    </div>
+
+                    <Button asChild className="rounded-xl">
+                      <Link to={`/contests/${contest.id}`}>
+                        Open contest
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* CTA BLOCK */}
-        <div className="mt-10 rounded-3xl border border-border bg-card/80 p-6 backdrop-blur-xl">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="font-heading text-2xl font-bold">
-                Want more competitive pressure?
-              </h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Regular contests help build real problem-solving speed.
-              </p>
-            </div>
-
-            <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm text-primary">
-              <Sparkles className="h-4 w-4" />
-              Stay consistent
-            </div>
-          </div>
-        </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

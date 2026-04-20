@@ -1,30 +1,72 @@
-import { Navigate, useParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Navigate, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+
 import { Navbar } from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
-import ProblemForm from "@/components/ProblemForm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
-import { useEffect, useState } from "react";
-import { motion } from "framer-motion";
-import type { Problem } from "@/types/problem.types";
-import { getAdminProblemByIdApi } from "@/api/adminProblem.api";
-import { Loader2, ShieldCheck } from "lucide-react";
+import API from "@/api/axios";
+
+type ProblemForm = {
+  title: string;
+  slug: string;
+  difficulty: string;
+  tags: string;
+  isPremium: boolean;
+  isPublished: boolean;
+  description: string;
+};
 
 export default function CreateProblemPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
   const { problemId } = useParams();
 
-  const [problem, setProblem] = useState<Problem | null>(null);
-  const [pageLoading, setPageLoading] = useState(Boolean(problemId));
+  const isEdit = Boolean(problemId);
+
+  const [form, setForm] = useState<ProblemForm>({
+    title: "",
+    slug: "",
+    difficulty: "EASY",
+    tags: "",
+    isPremium: false,
+    isPublished: false,
+    description: "",
+  });
+
+  const [pageLoading, setPageLoading] = useState(isEdit);
+  const [saving, setSaving] = useState(false);
+
+  const loadProblem = async () => {
+    try {
+      const res = await API.get(`/problems/${problemId}`);
+      const p = res.data.data;
+
+      setForm({
+        title: p.title,
+        slug: p.slug,
+        difficulty: p.difficulty,
+        tags: p.tags?.join(",") || "",
+        isPremium: p.isPremium,
+        isPublished: p.isPublished,
+        description: p.description || "",
+      });
+    } catch (err: any) {
+      toast.error("Failed to load problem");
+    } finally {
+      setPageLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!problemId) return;
-
-    getAdminProblemByIdApi(problemId)
-      .then((data) => setProblem(data.data))
-      .finally(() => setPageLoading(false));
+    if (isEdit) {
+      void loadProblem();
+    }
   }, [problemId]);
 
-  if (!loading && (!user || user.role !== "ADMIN")) {
+  if (!authLoading && (!user || user.role !== "ADMIN")) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -33,62 +75,136 @@ export default function CreateProblemPage() {
       <div className="min-h-screen bg-background">
         <Navbar />
         <div className="container py-16 flex items-center justify-center">
-          <div className="flex items-center gap-3 rounded-2xl border border-border bg-card px-6 py-4">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-sm text-muted-foreground">
-              Loading problem...
-            </span>
-          </div>
+          <span className="text-sm text-muted-foreground">
+            Loading problem...
+          </span>
         </div>
       </div>
     );
   }
 
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+
+    try {
+      setSaving(true);
+
+      const payload = {
+        ...form,
+        tags: form.tags.split(",").map((t) => t.trim()),
+      };
+
+      if (isEdit) {
+        await API.put(`/problems/${problemId}`, payload);
+        toast.success("Problem updated");
+      } else {
+        await API.post("/problems", payload);
+        toast.success("Problem created");
+      }
+
+      navigate("/manage-problems");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="container py-8"
-      >
-        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          {/* SIDEBAR */}
-          <AdminSidebar />
+      <div className="container py-8 grid gap-6 lg:grid-cols-[280px_1fr]">
+        <AdminSidebar />
 
-          {/* MAIN */}
-          <div className="space-y-6">
-            {/* HEADER */}
-            <div className="spotlight-card p-6 md:p-7">
-              <div className="feature-glow absolute inset-0 opacity-80" />
-              <div className="relative z-10 max-w-2xl">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-xl">
-                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                  Admin control
-                </div>
+        <div className="space-y-6 max-w-3xl">
+          <h1 className="text-3xl font-bold">
+            {isEdit ? "Edit Problem" : "Create Problem"}
+          </h1>
 
-                <h1 className="mt-5 font-heading text-3xl font-black md:text-4xl">
-                  {problemId ? "Edit Problem" : "Create Problem"}
-                </h1>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            <Input
+              placeholder="Title"
+              value={form.title}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, title: e.target.value }))
+              }
+            />
 
-                <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                  This is your control surface. Write the problem clearly, define
-                  constraints properly, and make sure the reference solution is solid.
-                  Weak admin inputs = bad product experience.
-                </p>
-              </div>
+            <Input
+              placeholder="Slug"
+              value={form.slug}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, slug: e.target.value }))
+              }
+            />
+
+            <Input
+              placeholder="Difficulty (EASY/MEDIUM/HARD)"
+              value={form.difficulty}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, difficulty: e.target.value }))
+              }
+            />
+
+            <Input
+              placeholder="Tags (comma separated)"
+              value={form.tags}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, tags: e.target.value }))
+              }
+            />
+
+            <textarea
+              className="w-full rounded-xl border p-3 bg-background"
+              rows={6}
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, description: e.target.value }))
+              }
+            />
+
+            <div className="flex gap-4">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.isPremium}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      isPremium: e.target.checked,
+                    }))
+                  }
+                />
+                Premium
+              </label>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.isPublished}
+                  onChange={(e) =>
+                    setForm((p) => ({
+                      ...p,
+                      isPublished: e.target.checked,
+                    }))
+                  }
+                />
+                Published
+              </label>
             </div>
 
-            {/* FORM */}
-            <ProblemForm
-              initialProblem={problem}
-              mode={problemId ? "edit" : "create"}
-            />
-          </div>
+            <Button disabled={saving} className="w-full">
+              {saving
+                ? "Saving..."
+                : isEdit
+                ? "Update Problem"
+                : "Create Problem"}
+            </Button>
+          </form>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

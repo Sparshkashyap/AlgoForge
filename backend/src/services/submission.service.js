@@ -22,34 +22,41 @@ export const createSubmissionService = async ({
   });
 
   if (!user) {
-    const err = new Error("User not found");
-    err.statusCode = 404;
-    throw err;
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   const problem = await prisma.problem.findFirst({
-    where: { id: problemId, isPublished: true },
+    where: {
+      id: problemId,
+      isPublished: true,
+    },
     include: {
-      testCases: { orderBy: { createdAt: "asc" } },
+      testCases: {
+        orderBy: {
+          createdAt: "asc",
+        },
+      },
     },
   });
 
   if (!problem) {
-    const err = new Error("Problem not found");
-    err.statusCode = 404;
-    throw err;
+    const error = new Error("Problem not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   if (!checkAccess(user, problem)) {
-    const err = new Error("Upgrade to premium to access this problem");
-    err.statusCode = 403;
-    throw err;
+    const error = new Error("Upgrade to a premium plan to access this problem");
+    error.statusCode = 403;
+    throw error;
   }
 
   if (!problem.testCases.length) {
-    const err = new Error("No test cases configured");
-    err.statusCode = 400;
-    throw err;
+    const error = new Error("Problem has no test cases configured");
+    error.statusCode = 400;
+    throw error;
   }
 
   const submission = await prisma.submission.create({
@@ -79,37 +86,49 @@ export const createSubmissionService = async ({
 
   await executionQueue.add(
     "execute-submission",
-    { submissionId: submission.id },
-    { jobId: `submission:${submission.id}` }
+    {
+      submissionId: submission.id,
+    },
+    {
+      jobId: `submission:${submission.id}`,
+    }
   );
 
   return submission;
 };
 
-export const listMySubmissionsService = (userId) =>
-  prisma.submission.findMany({
-    where: { userId },
+export const listMySubmissionsService = async (userId) => {
+  return prisma.submission.findMany({
+    where: {
+      userId,
+    },
     include: {
       problem: {
         select: {
           id: true,
           title: true,
           slug: true,
+          difficulty: true,
           tags: true,
           isPremium: true,
-          difficulty: true,
         },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
+};
 
 export const getSubmissionByIdForUserService = async ({
   submissionId,
   userId,
 }) => {
   const submission = await prisma.submission.findFirst({
-    where: { id: submissionId, userId },
+    where: {
+      id: submissionId,
+      userId,
+    },
     include: {
       problem: {
         select: {
@@ -125,9 +144,9 @@ export const getSubmissionByIdForUserService = async ({
   });
 
   if (!submission) {
-    const err = new Error("Submission not found");
-    err.statusCode = 404;
-    throw err;
+    const error = new Error("Submission not found");
+    error.statusCode = 404;
+    throw error;
   }
 
   return submission;

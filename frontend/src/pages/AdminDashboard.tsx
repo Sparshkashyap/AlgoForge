@@ -1,142 +1,117 @@
-// AdminDashboard.tsx
+import { useEffect, useState } from "react";
+import { ShieldCheck, Users, FileCode2, Send, Trophy, Bell } from "lucide-react";
+import { toast } from "react-toastify";
 
-import { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { ShieldCheck, Sparkles } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
-import { getAdminAnalyticsApi } from "@/api/adminUser.api";
-import AnalyticsCards from "@/components/AnalyticsCards";
-import AnalyticsCharts from "@/components/AnalyticsCharts";
+import { getAdminSummaryApi } from "@/api/admin.api";
+
+type Summary = {
+  usersCount: number;
+  problemsCount: number;
+  submissionsCount: number;
+  contestsCount: number;
+  premiumUsersCount: number;
+  blockedUsersCount: number;
+  notificationsCount: number;
+};
 
 export default function AdminDashboard() {
-  const [analytics, setAnalytics] = useState<any>(null);
+  const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAdminAnalyticsApi()
-      .then((data) => setAnalytics(data.data))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        setLoading(true);
+        const res = await getAdminSummaryApi();
+        setSummary(res?.data || null);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message || "Failed to load admin summary"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, []);
 
-  const userChartData = useMemo(() => {
-    const recent = analytics?.recentUsers || [];
-    return recent.map((item: any, index: number) => ({
-      name: item?.name || `U${index + 1}`,
-      value: Number(item?.value ?? item?.count ?? 1),
-    }));
-  }, [analytics]);
-
-  const submissionChartData = useMemo(() => {
-    const recent = analytics?.recentSubmissions || [];
-    return recent.map((item: any, index: number) => ({
-      name: item?.name || `S${index + 1}`,
-      value: Number(item?.value ?? item?.count ?? 1),
-    }));
-  }, [analytics]);
+  const cards = [
+    {
+      label: "Users",
+      value: summary?.usersCount || 0,
+      icon: Users,
+    },
+    {
+      label: "Problems",
+      value: summary?.problemsCount || 0,
+      icon: FileCode2,
+    },
+    {
+      label: "Submissions",
+      value: summary?.submissionsCount || 0,
+      icon: Send,
+    },
+    {
+      label: "Contests",
+      value: summary?.contestsCount || 0,
+      icon: Trophy,
+    },
+    {
+      label: "Premium Users",
+      value: summary?.premiumUsersCount || 0,
+      icon: ShieldCheck,
+    },
+    {
+      label: "Blocked Users",
+      value: summary?.blockedUsersCount || 0,
+      icon: ShieldCheck,
+    },
+    {
+      label: "Notifications",
+      value: summary?.notificationsCount || 0,
+      icon: Bell,
+    },
+  ];
 
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <motion.div
-        initial={{ opacity: 0, y: 14 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="container py-8 md:py-10"
-      >
-        <div className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-          <div className="spotlight-card overflow-hidden p-6 md:p-8">
-            <div className="feature-glow absolute inset-0 opacity-80" />
-            <div className="relative z-10 max-w-3xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground backdrop-blur-xl">
-                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                Admin control center
-              </div>
-
-              <h1 className="mt-6 font-heading text-4xl font-black leading-tight md:text-6xl">
-                Platform oversight with cleaner signals.
-              </h1>
-
-              <p className="mt-4 max-w-2xl text-sm leading-8 text-muted-foreground md:text-base">
-                Track user growth, submission activity, and system-level movement
-                from one surface that feels like a real control layer, not a raw
-                internal page.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="metric-card">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Total users
-              </p>
-              <p className="mt-3 font-heading text-4xl font-black">
-                {analytics?.totals?.totalUsers ?? 0}
-              </p>
-            </div>
-
-            <div className="metric-card">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Total problems
-              </p>
-              <p className="mt-3 font-heading text-4xl font-black">
-                {analytics?.totals?.totalProblems ?? 0}
-              </p>
-            </div>
-
-            <div className="metric-card">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Premium users
-              </p>
-              <p className="mt-3 font-heading text-4xl font-black">
-                {analytics?.totals?.premiumUsers ?? 0}
-              </p>
-            </div>
-
-            <div className="metric-card">
-              <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
-                Submissions
-              </p>
-              <p className="mt-3 font-heading text-4xl font-black">
-                {analytics?.totals?.totalSubmissions ?? 0}
-              </p>
-            </div>
-          </div>
-        </div>
+      <div className="container py-12 md:py-16">
+        <h1 className="text-4xl font-black">Admin Dashboard</h1>
+        <p className="mt-3 text-sm text-muted-foreground">
+          Admin summary should show platform health clearly, not hide signal.
+        </p>
 
         {loading ? (
-          <div className="mt-8 rounded-[1.8rem] border border-border/70 bg-card/70 p-8 text-sm text-muted-foreground backdrop-blur-xl">
-            Loading analytics...
+          <div className="mt-8 rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+            Loading summary...
           </div>
         ) : (
-          <>
-            <div className="mt-8">
-              <AnalyticsCards totals={analytics?.totals || {}} />
-            </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {cards.map((card) => {
+              const Icon = card.icon;
+              return (
+                <div
+                  key={card.label}
+                  className="rounded-[1.6rem] border border-border/70 bg-card/60 p-5"
+                >
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      {card.label}
+                    </p>
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
 
-            <div className="mt-8 grid gap-6 lg:grid-cols-2">
-              <AnalyticsCharts data={userChartData} title="Recent User Signups" />
-              <AnalyticsCharts
-                data={submissionChartData}
-                title="Recent Submissions"
-              />
-            </div>
-
-            <div className="mt-8 rounded-[1.8rem] border border-border/70 bg-card/75 p-6 backdrop-blur-xl">
-              <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-primary/80">
-                <Sparkles className="h-3.5 w-3.5" />
-                Admin snapshot
-              </div>
-
-              <p className="mt-4 text-sm leading-8 text-muted-foreground">
-                This dashboard should help you read platform movement fast. Keep
-                charts, cards, and actions tight so the admin side feels as polished
-                as the public product.
-              </p>
-            </div>
-          </>
+                  <p className="mt-4 text-3xl font-black">{card.value}</p>
+                </div>
+              );
+            })}
+          </div>
         )}
-      </motion.div>
+      </div>
     </div>
   );
 }

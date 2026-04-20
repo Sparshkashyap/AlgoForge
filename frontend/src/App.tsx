@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SplashScreen from "@/components/SplashScreen";
+import { useRealtimeUserChannel } from "@/hooks/useRealtimeUserChannel";
 
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
@@ -25,135 +26,206 @@ import DailyQuestion from "@/pages/DailyQuestion";
 import AdminExports from "@/pages/AdminExports";
 import AdminDashboard from "@/pages/AdminDashboard";
 import CreatorDashboard from "@/pages/CreatorDashboard";
+import Notifications from "@/pages/Notifications";
+import Contests from "@/pages/Contests";
+import ContestDetails from "@/pages/ContestDetails";
+import ManageContests from "@/pages/ManageContests";
+import CreateContest from "@/pages/CreateContest";
+import AdminUsers from "@/pages/AdminUsers";
+import AdminAuditLogs from "@/pages/AdminAuditLogs";
 
 const queryClient = new QueryClient();
 
-export default function App() {
+function AppShell() {
   const [showSplash, setShowSplash] = useState(true);
 
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setShowSplash(false);
-    }, 1800);
+  useRealtimeUserChannel();
 
-    return () => window.clearTimeout(timer);
+  useEffect(() => {
+    const timer = setTimeout(() => setShowSplash(false), 1800);
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <SplashScreen show={showSplash} />
+    <TooltipProvider>
+      <BrowserRouter>
+        <SplashScreen show={showSplash} />
 
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/home" element={<Navigate to="/" replace />} />
+        <Routes>
+          {/* public */}
+          <Route path="/" element={<Index />} />
+          <Route path="/home" element={<Navigate to="/" replace />} />
 
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
-            <Route path="/problems" element={<Problems />} />
-            <Route path="/problems/:slug" element={<ProblemDetails />} />
-            <Route path="/daily-question" element={<DailyQuestion />} />
-            <Route path="/upgrade" element={<Upgrade />} />
+          <Route path="/problems" element={<Problems />} />
+          <Route path="/problems/:slug" element={<ProblemDetails />} />
 
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
+          <Route path="/daily-question" element={<DailyQuestion />} />
+          <Route path="/upgrade" element={<Upgrade />} />
 
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                  <Profile />
-                </ProtectedRoute>
-              }
-            />
+          <Route path="/contests" element={<Contests />} />
+          <Route path="/contests/:contestId" element={<ContestDetails />} />
 
-            <Route
-              path="/billing"
-              element={
-                <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                  <Billing />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/creator-dashboard"
-              element={
-                <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                  <CreatorDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/admin-dashboard"
-              element={
-                <ProtectedRoute allowRoles={["ADMIN"]}>
-                  <AdminDashboard />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/admin-exports"
-              element={
-                <ProtectedRoute allowRoles={["ADMIN"]}>
-                  <AdminExports />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/create-problem"
-              element={
-                <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                  <CreateProblemPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/create-problem/:problemId"
-              element={
-                <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                  <CreateProblemPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/manage-problems"
-              element={
-                <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                  <ManageProblems />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-
-          <ToastContainer
-            position="top-right"
-            autoClose={2500}
-            hideProgressBar={false}
-            newestOnTop
-            closeOnClick
-            pauseOnHover
-            theme="colored"
+          {/* user */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
+                <Dashboard />
+              </ProtectedRoute>
+            }
           />
-        </BrowserRouter>
-      </TooltipProvider>
+
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
+                <Profile />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/billing"
+            element={
+              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
+                <Billing />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
+                <Notifications />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* creator */}
+          <Route
+            path="/creator-dashboard"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <CreatorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/manage-problems"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <ManageProblems />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-problem"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <CreateProblemPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-problem/:problemId"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <CreateProblemPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/manage-contests"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <ManageContests />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-contest"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <CreateContest />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/create-contest/:contestId"
+            element={
+              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
+                <CreateContest />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* admin */}
+          <Route
+            path="/admin-dashboard"
+            element={
+              <ProtectedRoute allowRoles={["ADMIN"]}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-exports"
+            element={
+              <ProtectedRoute allowRoles={["ADMIN"]}>
+                <AdminExports />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-users"
+            element={
+              <ProtectedRoute allowRoles={["ADMIN"]}>
+                <AdminUsers />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/admin-audit-logs"
+            element={
+              <ProtectedRoute allowRoles={["ADMIN"]}>
+                <AdminAuditLogs />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* fallback */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+
+        <ToastContainer
+          position="top-right"
+          autoClose={2500}
+          theme="colored"
+        />
+      </BrowserRouter>
+    </TooltipProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppShell />
     </QueryClientProvider>
   );
 }

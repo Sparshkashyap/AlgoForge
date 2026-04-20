@@ -11,6 +11,7 @@ const parsePayload = (payload) => {
   if (typeof payload === "string") {
     return JSON.parse(payload);
   }
+
   return payload;
 };
 
@@ -18,7 +19,9 @@ const handleRetryPaymentEvent = async (job) => {
   const { eventId } = job.data;
 
   const audit = await getPaymentAuditByEventIdService(eventId);
-  if (!audit) throw new Error("Payment audit not found");
+  if (!audit) {
+    throw new Error("Payment audit not found");
+  }
 
   if (audit.status === "PROCESSED") {
     return { skipped: true, eventId };
@@ -36,6 +39,7 @@ const handleRetryPaymentEvent = async (job) => {
       eventId,
       errorMessage: error.message,
     });
+
     throw error;
   }
 };

@@ -1,7 +1,7 @@
 import express from "express";
 import {
   createSubmissionController,
-  getSubmissionStatusController,
+  getSubmissionByIdForUserController,
   listMySubmissionsController,
 } from "../controllers/submission.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
@@ -14,6 +14,48 @@ router.use(authMiddleware);
 
 router.post("/", validate(createSubmissionSchema), createSubmissionController);
 router.get("/me", listMySubmissionsController);
-router.get("/:submissionId", getSubmissionStatusController);
+router.get("/:submissionId", getSubmissionByIdForUserController);
 
 export default router;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

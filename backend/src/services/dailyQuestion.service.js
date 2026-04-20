@@ -11,31 +11,34 @@ export const assignDailyQuestionService = async () => {
   const today = getTodayDateOnly();
 
   const existing = await prisma.dailyQuestion.findUnique({
-    where: {
-      activeDate: today,
-    },
+    where: { activeDate: today },
     include: {
-      problem: true,
+      problem: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          difficulty: true,
+          tags: true,
+          isPremium: true,
+        },
+      },
     },
   });
 
-  if (existing) {
-    return existing;
-  }
+  if (existing) return existing;
 
-  const alreadyUsedProblemIds = (
-    await prisma.dailyQuestion.findMany({
-      select: {
-        problemId: true,
-      },
-    })
-  ).map((item) => item.problemId);
+  const usedProblemIds = await prisma.dailyQuestion.findMany({
+    select: { problemId: true },
+  });
 
-  let selectedProblem = await prisma.problem.findFirst({
+  const usedIds = usedProblemIds.map((item) => item.problemId);
+
+  let problem = await prisma.problem.findFirst({
     where: {
       isPublished: true,
       id: {
-        notIn: alreadyUsedProblemIds.length ? alreadyUsedProblemIds : undefined,
+        notIn: usedIds.length ? usedIds : undefined,
       },
     },
     orderBy: [
@@ -44,11 +47,9 @@ export const assignDailyQuestionService = async () => {
     ],
   });
 
-  if (!selectedProblem) {
-    selectedProblem = await prisma.problem.findFirst({
-      where: {
-        isPublished: true,
-      },
+  if (!problem) {
+    problem = await prisma.problem.findFirst({
+      where: { isPublished: true },
       orderBy: [
         { difficulty: "asc" },
         { createdAt: "desc" },
@@ -56,7 +57,7 @@ export const assignDailyQuestionService = async () => {
     });
   }
 
-  if (!selectedProblem) {
+  if (!problem) {
     const error = new Error("No published problem available for daily question");
     error.statusCode = 400;
     throw error;
@@ -64,46 +65,49 @@ export const assignDailyQuestionService = async () => {
 
   const dailyQuestion = await prisma.dailyQuestion.create({
     data: {
-      problemId: selectedProblem.id,
+      problemId: problem.id,
       activeDate: today,
     },
     include: {
-      problem: true,
+      problem: {
+        select: {
+          id: true,
+          title: true,
+          slug: true,
+          difficulty: true,
+          tags: true,
+          isPremium: true,
+        },
+      },
     },
   });
 
   const users = await prisma.user.findMany({
-    where: {
-      isBlocked: false,
-    },
-    select: {
-      id: true,
-    },
+    where: { isBlocked: false },
+    select: { id: true },
   });
 
   await createBulkNotificationsForUsersService({
-    userIds: users.map((user) => user.id),
+    userIds: users.map((u) => u.id),
     type: "DAILY_QUESTION",
     title: "Daily question is live",
-    message: `${selectedProblem.title} is today's daily question.`,
+    message: `${dailyQuestion.problem.title} is today's daily question.`,
     data: {
       dailyQuestionId: dailyQuestion.id,
-      problemId: selectedProblem.id,
-      slug: selectedProblem.slug,
-      difficulty: selectedProblem.difficulty,
+      problemId: dailyQuestion.problem.id,
+      slug: dailyQuestion.problem.slug,
+      difficulty: dailyQuestion.problem.difficulty,
     },
   });
 
   return dailyQuestion;
 };
 
-export const getActiveDailyQuestionService = async () => {
+export const getTodayDailyQuestionService = async () => {
   const today = getTodayDateOnly();
 
   let dailyQuestion = await prisma.dailyQuestion.findUnique({
-    where: {
-      activeDate: today,
-    },
+    where: { activeDate: today },
     include: {
       problem: {
         select: {
@@ -113,10 +117,12 @@ export const getActiveDailyQuestionService = async () => {
           description: true,
           difficulty: true,
           tags: true,
+          constraints: true,
           sampleInput: true,
           sampleOutput: true,
           explanation: true,
-          constraints: true,
+          starterCode: true,
+          languageTemplates: true,
           isPremium: true,
         },
       },
@@ -125,28 +131,6 @@ export const getActiveDailyQuestionService = async () => {
 
   if (!dailyQuestion) {
     dailyQuestion = await assignDailyQuestionService();
-    dailyQuestion = await prisma.dailyQuestion.findUnique({
-      where: {
-        activeDate: today,
-      },
-      include: {
-        problem: {
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            description: true,
-            difficulty: true,
-            tags: true,
-            sampleInput: true,
-            sampleOutput: true,
-            explanation: true,
-            constraints: true,
-            isPremium: true,
-          },
-        },
-      },
-    });
   }
 
   return dailyQuestion;
@@ -172,6 +156,20 @@ export const markDailyQuestionAttemptService = async ({
       userId,
       dailyQuestionId,
       status,
+    },
+  });
+};
+
+export const getMyDailyQuestionAttemptService = async ({
+  userId,
+  dailyQuestionId,
+}) => {
+  return prisma.userDailyQuestionAttempt.findUnique({
+    where: {
+      userId_dailyQuestionId: {
+        userId,
+        dailyQuestionId,
+      },
     },
   });
 };

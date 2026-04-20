@@ -1,9 +1,16 @@
+export type SubmissionStatus =
+  | "QUEUED"
+  | "PROCESSING"
+  | "COMPLETED"
+  | "FAILED"
+  | string;
+
 export type Submission = {
   id?: string;
   language: string;
-  languageId?: number;
+  languageId?: number | null;
   code?: string;
-  status: string;
+  status: SubmissionStatus;
   verdict?: string | null;
   stdout?: string | null;
   stderr?: string | null;
@@ -13,10 +20,12 @@ export type Submission = {
   passedCount?: number;
   totalCount?: number;
   createdAt?: string;
+  updatedAt?: string;
   problem?: {
     id: string;
     title: string;
     slug: string;
+    difficulty?: string;
     tags?: string[];
     isPremium?: boolean;
   };

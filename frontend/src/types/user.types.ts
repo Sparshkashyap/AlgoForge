@@ -1,4 +1,5 @@
 export type UserRole = "USER" | "CREATOR" | "ADMIN";
+
 export type UserPlan = "FREE" | "STANDARD" | "PRO";
 
 export type User = {
@@ -6,14 +7,12 @@ export type User = {
   name: string;
   email: string;
   role: UserRole;
-  plan?: UserPlan;
+  plan: UserPlan;
   avatarUrl?: string | null;
+  provider?: string;
   solvedCount?: number;
   streak?: number;
+  isBlocked?: boolean;
   createdAt?: string;
-  lastSeenAt?: string | null;
-  _count?: {
-    submissions: number;
-    problems: number;
-  };
+  updatedAt?: string;
 };

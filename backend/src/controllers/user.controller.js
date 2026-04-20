@@ -29,6 +29,7 @@ export const updateMyProfileController = async (req, res, next) => {
       userId: req.user.userId,
       name: req.body.name,
       email: req.body.email,
+      avatarUrl: req.body.avatarUrl,
     });
 
     return res.status(200).json({
@@ -101,7 +102,8 @@ export const readMyNotificationController = async (req, res, next) => {
   try {
     const notification = await readMyNotificationService({
       userId: req.user.userId,
-      notificationId: req.validated.params.notificationId,
+      notificationId:
+        req.validated?.params?.notificationId ?? req.params.notificationId,
     });
 
     return res.status(200).json({
