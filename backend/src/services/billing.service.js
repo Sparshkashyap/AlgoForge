@@ -1,6 +1,7 @@
 import prisma from "../config/db.js";
 import env from "../config/env.js";
-import { razorpay, getPlanIdForTier } from "./razorpay.service.js";
+import { razorpay } from "./razorpay.service.js";
+import { getPlanPricingByTierService } from "./plan.service.js";
 
 const getPlanFromSubscription = (subscriptionEntity) => {
   const notePlan = subscriptionEntity?.notes?.plan;
@@ -10,7 +11,10 @@ const getPlanFromSubscription = (subscriptionEntity) => {
 
   const planId = subscriptionEntity?.plan_id || "";
 
-  if (env.RAZORPAY_STANDARD_PLAN_ID && planId === env.RAZORPAY_STANDARD_PLAN_ID) {
+  if (
+    env.RAZORPAY_STANDARD_PLAN_ID &&
+    planId === env.RAZORPAY_STANDARD_PLAN_ID
+  ) {
     return "STANDARD";
   }
 
@@ -24,6 +28,32 @@ const getPlanFromSubscription = (subscriptionEntity) => {
 const toPeriodEndDate = (timestamp) =>
   timestamp ? new Date(timestamp * 1000) : null;
 
+const validateRazorpayConfigForTier = (tier) => {
+  if (!env.RAZORPAY_KEY_ID) {
+    const error = new Error("Missing Razorpay key id");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  if (!env.RAZORPAY_KEY_SECRET) {
+    const error = new Error("Missing Razorpay key secret");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  if (tier === "STANDARD" && !env.RAZORPAY_STANDARD_PLAN_ID) {
+    const error = new Error("Missing Razorpay STANDARD plan id");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  if (tier === "PRO" && !env.RAZORPAY_PRO_PLAN_ID) {
+    const error = new Error("Missing Razorpay PRO plan id");
+    error.statusCode = 500;
+    throw error;
+  }
+};
+
 export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
   if (!["STANDARD", "PRO"].includes(tier)) {
     const error = new Error("Invalid subscription tier");
@@ -31,12 +61,16 @@ export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
     throw error;
   }
 
+  validateRazorpayConfigForTier(tier);
+
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
       name: true,
       email: true,
+      role: true,
+      plan: true,
       razorpaySubscriptionId: true,
       subscriptionStatus: true,
     },
@@ -48,7 +82,18 @@ export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
     throw error;
   }
 
-  const planId = getPlanIdForTier(tier);
+  if (user.role !== "USER") {
+    const error = new Error("Pricing is available only for users");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  const planPricing = await getPlanPricingByTierService(tier);
+
+  const planId =
+    tier === "STANDARD"
+      ? env.RAZORPAY_STANDARD_PLAN_ID
+      : env.RAZORPAY_PRO_PLAN_ID;
 
   const subscription = await razorpay.subscriptions.create({
     plan_id: planId,
@@ -57,6 +102,7 @@ export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
     notes: {
       userId,
       plan: tier,
+      displayAmountInPaise: String(planPricing.amountInPaise),
     },
   });
 
@@ -72,6 +118,8 @@ export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
     subscriptionId: subscription.id,
     razorpayKeyId: env.RAZORPAY_KEY_ID,
     plan: tier,
+    amountInPaise: planPricing.amountInPaise,
+    currency: planPricing.currency,
     user: {
       name: user.name,
       email: user.email,

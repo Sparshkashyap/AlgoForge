@@ -1,4 +1,6 @@
 import prisma from "../config/db.js";
+import { dispatchNotificationEventService } from "./notification.service.js";
+import { getPricingCatalogService, updatePricingCatalogService } from "./plan.service.js";
 
 export const getAdminDashboardSummaryService = async () => {
   const [
@@ -42,31 +44,44 @@ export const getAdminDashboardSummaryService = async () => {
 
 export const listUsersForAdminService = async () => {
   return prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
     select: {
       id: true,
       name: true,
       email: true,
       role: true,
       plan: true,
+      avatarUrl: true,
       solvedCount: true,
       streak: true,
       isBlocked: true,
       blockedReason: true,
+      provider: true,
+      subscriptionStatus: true,
       createdAt: true,
-    },
-    orderBy: {
-      createdAt: "desc",
     },
   });
 };
 
-export const updateUserRoleService = async ({
-  actorUserId,
-  targetUserId,
-  role,
-}) => {
-  const updatedUser = await prisma.user.update({
-    where: { id: targetUserId },
+export const updateUserRoleService = async ({ actorUserId, userId, role }) => {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      role: true,
+      name: true,
+      email: true,
+    },
+  });
+
+  if (!existing) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
     data: { role },
     select: {
       id: true,
@@ -75,7 +90,6 @@ export const updateUserRoleService = async ({
       role: true,
       plan: true,
       isBlocked: true,
-      createdAt: true,
     },
   });
 
@@ -83,27 +97,40 @@ export const updateUserRoleService = async ({
     data: {
       action: "USER_ROLE_UPDATED",
       actorUserId,
-      targetUserId,
+      targetUserId: userId,
       metadata: {
-        role,
+        previousRole: existing.role,
+        nextRole: role,
       },
     },
   });
 
-  return updatedUser;
+  return updated;
 };
 
-export const blockUserService = async ({
-  actorUserId,
-  targetUserId,
-  reason,
-}) => {
-  const updatedUser = await prisma.user.update({
-    where: { id: targetUserId },
+export const blockUserService = async ({ actorUserId, userId, reason }) => {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isBlocked: true,
+    },
+  });
+
+  if (!existing) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const finalReason = reason || "Blocked by admin";
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
     data: {
       isBlocked: true,
       blockedAt: new Date(),
-      blockedReason: reason || "Blocked by admin",
+      blockedReason: finalReason,
     },
     select: {
       id: true,
@@ -113,7 +140,6 @@ export const blockUserService = async ({
       plan: true,
       isBlocked: true,
       blockedReason: true,
-      createdAt: true,
     },
   });
 
@@ -121,19 +147,42 @@ export const blockUserService = async ({
     data: {
       action: "USER_BLOCKED",
       actorUserId,
-      targetUserId,
+      targetUserId: userId,
       metadata: {
-        reason: reason || "Blocked by admin",
+        reason: finalReason,
       },
     },
   });
 
-  return updatedUser;
+  await dispatchNotificationEventService({
+    event: "USER_BLOCKED",
+    actorUserId,
+    payload: {
+      targetUserId: userId,
+      reason: finalReason,
+    },
+  });
+
+  return updated;
 };
 
-export const unblockUserService = async ({ actorUserId, targetUserId }) => {
-  const updatedUser = await prisma.user.update({
-    where: { id: targetUserId },
+export const unblockUserService = async ({ actorUserId, userId }) => {
+  const existing = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      isBlocked: true,
+    },
+  });
+
+  if (!existing) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const updated = await prisma.user.update({
+    where: { id: userId },
     data: {
       isBlocked: false,
       blockedAt: null,
@@ -146,7 +195,7 @@ export const unblockUserService = async ({ actorUserId, targetUserId }) => {
       role: true,
       plan: true,
       isBlocked: true,
-      createdAt: true,
+      blockedReason: true,
     },
   });
 
@@ -154,11 +203,19 @@ export const unblockUserService = async ({ actorUserId, targetUserId }) => {
     data: {
       action: "USER_UNBLOCKED",
       actorUserId,
-      targetUserId,
+      targetUserId: userId,
     },
   });
 
-  return updatedUser;
+  await dispatchNotificationEventService({
+    event: "USER_UNBLOCKED",
+    actorUserId,
+    payload: {
+      targetUserId: userId,
+    },
+  });
+
+  return updated;
 };
 
 export const listAuditLogsService = async () => {
@@ -183,5 +240,19 @@ export const listAuditLogsService = async () => {
       createdAt: "desc",
     },
     take: 100,
+  });
+};
+
+export const getPricingCatalogForAdminService = async () => {
+  return getPricingCatalogService();
+};
+
+export const updatePricingCatalogForAdminService = async ({
+  actorUserId,
+  plans,
+}) => {
+  return updatePricingCatalogService({
+    actorUserId,
+    plans,
   });
 };

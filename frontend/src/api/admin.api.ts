@@ -11,17 +11,17 @@ export const listAdminUsersApi = async () => {
 };
 
 export const updateUserRoleApi = async (userId: string, role: string) => {
-  const response = await API.put(`/admin/users/${userId}/role`, { role });
+  const response = await API.patch(`/admin/users/${userId}/role`, { role });
   return response.data;
 };
 
 export const blockUserApi = async (userId: string, reason?: string) => {
-  const response = await API.put(`/admin/users/${userId}/block`, { reason });
+  const response = await API.patch(`/admin/users/${userId}/block`, { reason });
   return response.data;
 };
 
 export const unblockUserApi = async (userId: string) => {
-  const response = await API.put(`/admin/users/${userId}/unblock`);
+  const response = await API.patch(`/admin/users/${userId}/unblock`);
   return response.data;
 };
 

@@ -12,11 +12,10 @@ import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
+import CreatorSidebar from "@/components/CreatorSidebar";
 import { useAuth } from "@/context/AuthContext";
-import {
-  deleteProblemApi,
-  getAdminProblemsApi,
-} from "@/api/adminProblem.api";
+import { deleteProblemApi } from "@/api/adminProblem.api";
+import API from "@/api/axios";
 import { Button } from "@/components/ui/button";
 import type { Problem } from "@/types/problem.types";
 
@@ -25,11 +24,19 @@ export default function ManageProblems() {
   const [problems, setProblems] = useState<Problem[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
 
+  const canManage = user?.role === "ADMIN" || user?.role === "CREATOR";
+  const isAdmin = user?.role === "ADMIN";
+
   const loadProblems = async () => {
     try {
       setPageLoading(true);
-      const data = await getAdminProblemsApi();
-      setProblems(data.data || []);
+
+      const data =
+        user?.role === "ADMIN"
+          ? await API.get("/problems/admin/all/list")
+          : await API.get("/problems/me");
+
+      setProblems(data.data?.data || []);
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to load problems");
     } finally {
@@ -38,8 +45,10 @@ export default function ManageProblems() {
   };
 
   useEffect(() => {
-    loadProblems();
-  }, []);
+    if (canManage) {
+      void loadProblems();
+    }
+  }, [user?.role, canManage]);
 
   const handleDelete = async (problemId: string) => {
     const ok = window.confirm("Delete this problem?");
@@ -54,7 +63,7 @@ export default function ManageProblems() {
     }
   };
 
-  if (!loading && (!user || user.role !== "ADMIN")) {
+  if (!loading && (!user || !canManage)) {
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -69,7 +78,7 @@ export default function ManageProblems() {
         className="container py-8"
       >
         <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-          <AdminSidebar />
+          {isAdmin ? <AdminSidebar /> : <CreatorSidebar />}
 
           <div>
             <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -78,7 +87,7 @@ export default function ManageProblems() {
                   Manage Problems
                 </h1>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Review, edit, and remove problems from one clean control
+                  Review, edit, and manage authored problems from one clean
                   surface.
                 </p>
               </div>
@@ -112,38 +121,56 @@ export default function ManageProblems() {
                     <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/55 text-primary">
-                            <FileText className="h-4 w-4" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border/70 bg-background/60">
+                            <FileText className="h-4 w-4 text-primary" />
                           </div>
 
-                          <h3 className="font-heading text-xl font-bold">
-                            {problem.title}
-                          </h3>
+                          <div>
+                            <h2 className="text-lg font-semibold">
+                              {problem.title}
+                            </h2>
+                            <p className="text-sm text-muted-foreground">
+                              /problems/{problem.slug}
+                            </p>
+                          </div>
 
                           {problem.isPremium && (
-                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-xs font-medium text-amber-400">
+                            <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs text-amber-400">
                               <Crown className="h-3 w-3" />
                               Premium
                             </span>
                           )}
 
+                          <span className="rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground">
+                            {problem.difficulty}
+                          </span>
+
                           <span
-                            className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
+                            className={`rounded-full px-3 py-1 text-xs ${
                               problem.isPublished
-                                ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
-                                : "border-amber-500/20 bg-amber-500/10 text-amber-400"
+                                ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-400"
+                                : "border border-border/70 text-muted-foreground"
                             }`}
                           >
                             {problem.isPublished ? "Published" : "Draft"}
                           </span>
                         </div>
 
-                        <p className="mt-3 text-sm text-muted-foreground line-clamp-3">
-                          {problem.description}
-                        </p>
+                        {problem.tags?.length ? (
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {problem.tags.map((tag) => (
+                              <span
+                                key={tag}
+                                className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-xs text-muted-foreground"
+                              >
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
 
-                      <div className="flex gap-3">
+                      <div className="flex flex-wrap gap-2">
                         <Link to={`/create-problem/${problem.id}`}>
                           <Button variant="outline" className="rounded-xl">
                             <Edit className="mr-2 h-4 w-4" />
@@ -151,9 +178,15 @@ export default function ManageProblems() {
                           </Button>
                         </Link>
 
+                        <Link to={`/problems/${problem.slug}`}>
+                          <Button variant="outline" className="rounded-xl">
+                            View
+                          </Button>
+                        </Link>
+
                         <Button
-                          variant="destructive"
-                          className="rounded-xl"
+                          variant="outline"
+                          className="rounded-xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
                           onClick={() => handleDelete(problem.id)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />

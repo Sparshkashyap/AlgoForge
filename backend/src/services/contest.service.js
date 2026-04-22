@@ -1,5 +1,9 @@
 import prisma from "../config/db.js";
 import { notificationQueue } from "../queues/notification.queue.js";
+import { dispatchNotificationEventService } from "./notification.service.js";
+
+const normalizeProblemIds = (problemIds = []) =>
+  [...new Set(problemIds.map((item) => String(item).trim()).filter(Boolean))];
 
 const ensureProblemsExist = async (problemIds = []) => {
   if (!problemIds.length) return [];
@@ -50,151 +54,6 @@ const scheduleContestReminders = async ({ contestId, startAt }) => {
   }
 };
 
-export const createContestService = async ({
-  title,
-  description,
-  startAt,
-  endAt,
-  isPublished = false,
-  problemIds = [],
-  createdById,
-}) => {
-  const startDate = new Date(startAt);
-  const endDate = new Date(endAt);
-
-  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
-    const error = new Error("Invalid contest dates");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (endDate <= startDate) {
-    const error = new Error("Contest end time must be after start time");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (!problemIds.length) {
-    const error = new Error("At least one problem is required");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  await ensureProblemsExist(problemIds);
-
-  const contest = await prisma.contest.create({
-    data: {
-      title: title.trim(),
-      description: description?.trim() || null,
-      startAt: startDate,
-      endAt: endDate,
-      isPublished: Boolean(isPublished),
-      createdById,
-      problems: {
-        create: problemIds.map((problemId, index) => ({
-          problemId,
-          sortOrder: index,
-        })),
-      },
-    },
-    include: {
-      problems: {
-        include: {
-          problem: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              difficulty: true,
-              tags: true,
-            },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-      },
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-  });
-
-  if (contest.isPublished) {
-    await scheduleContestReminders({
-      contestId: contest.id,
-      startAt: contest.startAt,
-    });
-  }
-
-  return contest;
-};
-
-export const updateContestService = async ({
-  contestId,
-  title,
-  description,
-  startAt,
-  endAt,
-  isPublished,
-  problemIds,
-}) => {
-  if (problemIds?.length) {
-    await ensureProblemsExist(problemIds);
-  }
-
-  const contest = await prisma.contest.update({
-    where: { id: contestId },
-    data: {
-      ...(title !== undefined ? { title: title.trim() } : {}),
-      ...(description !== undefined
-        ? { description: description?.trim() || null }
-        : {}),
-      ...(startAt ? { startAt: new Date(startAt) } : {}),
-      ...(endAt ? { endAt: new Date(endAt) } : {}),
-      ...(typeof isPublished === "boolean" ? { isPublished } : {}),
-      ...(problemIds
-        ? {
-            problems: {
-              deleteMany: {},
-              create: problemIds.map((problemId, index) => ({
-                problemId,
-                sortOrder: index,
-              })),
-            },
-          }
-        : {}),
-    },
-    include: {
-      problems: {
-        include: {
-          problem: {
-            select: {
-              id: true,
-              title: true,
-              slug: true,
-              difficulty: true,
-              tags: true,
-            },
-          },
-        },
-        orderBy: { sortOrder: "asc" },
-      },
-    },
-  });
-
-  if (contest.isPublished) {
-    await scheduleContestReminders({
-      contestId: contest.id,
-      startAt: contest.startAt,
-    });
-  }
-
-  return contest;
-};
-
 export const listPublishedContestsService = async () => {
   return prisma.contest.findMany({
     where: { isPublished: true },
@@ -210,6 +69,7 @@ export const listPublishedContestsService = async () => {
               title: true,
               slug: true,
               difficulty: true,
+              tags: true,
             },
           },
         },
@@ -222,7 +82,7 @@ export const listPublishedContestsService = async () => {
 
 export const listMyCreatedContestsService = async (userId) => {
   return prisma.contest.findMany({
-    where: { createdById: userId },
+    where: userId ? { createdById: userId } : undefined,
     include: {
       registrations: {
         select: { id: true },
@@ -295,13 +155,198 @@ export const getContestByIdService = async ({ contestId, userId = null }) => {
   };
 };
 
+export const createContestService = async ({
+  actorUserId,
+  title,
+  description,
+  startAt,
+  endAt,
+  isPublished = false,
+  problemIds = [],
+}) => {
+  const normalizedProblemIds = normalizeProblemIds(problemIds);
+
+  const startDate = new Date(startAt);
+  const endDate = new Date(endAt);
+
+  if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) {
+    const error = new Error("Invalid contest dates");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (endDate <= startDate) {
+    const error = new Error("Contest end time must be after start time");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!normalizedProblemIds.length) {
+    const error = new Error("At least one problem is required");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await ensureProblemsExist(normalizedProblemIds);
+
+  const contest = await prisma.contest.create({
+    data: {
+      title: title.trim(),
+      description: description?.trim() || null,
+      startAt: startDate,
+      endAt: endDate,
+      isPublished,
+      createdById: actorUserId,
+      problems: {
+        create: normalizedProblemIds.map((problemId, index) => ({
+          problemId,
+          sortOrder: index,
+        })),
+      },
+    },
+    include: {
+      problems: {
+        include: {
+          problem: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              difficulty: true,
+              tags: true,
+            },
+          },
+        },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
+  });
+
+  if (contest.isPublished) {
+    await scheduleContestReminders({
+      contestId: contest.id,
+      startAt: contest.startAt,
+    });
+
+    await dispatchNotificationEventService({
+      event: "CONTEST_PUBLISHED",
+      actorUserId,
+      payload: {
+        contestId: contest.id,
+        contestTitle: contest.title,
+      },
+    });
+  }
+
+  return contest;
+};
+
+export const updateContestService = async ({
+  actorUserId,
+  contestId,
+  title,
+  description,
+  startAt,
+  endAt,
+  isPublished,
+  problemIds,
+}) => {
+  const existing = await prisma.contest.findUnique({
+    where: { id: contestId },
+    select: {
+      id: true,
+      title: true,
+      isPublished: true,
+    },
+  });
+
+  if (!existing) {
+    const error = new Error("Contest not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const normalizedProblemIds = Array.isArray(problemIds)
+    ? normalizeProblemIds(problemIds)
+    : null;
+
+  if (normalizedProblemIds) {
+    await ensureProblemsExist(normalizedProblemIds);
+  }
+
+  const updated = await prisma.$transaction(async (tx) => {
+    if (normalizedProblemIds) {
+      await tx.contestProblem.deleteMany({
+        where: { contestId },
+      });
+
+      if (normalizedProblemIds.length > 0) {
+        await tx.contestProblem.createMany({
+          data: normalizedProblemIds.map((problemId, index) => ({
+            contestId,
+            problemId,
+            sortOrder: index,
+          })),
+        });
+      }
+    }
+
+    return tx.contest.update({
+      where: { id: contestId },
+      data: {
+        ...(title !== undefined ? { title: title.trim() } : {}),
+        ...(description !== undefined
+          ? { description: description?.trim() || null }
+          : {}),
+        ...(startAt ? { startAt: new Date(startAt) } : {}),
+        ...(endAt ? { endAt: new Date(endAt) } : {}),
+        ...(typeof isPublished === "boolean" ? { isPublished } : {}),
+      },
+      include: {
+        problems: {
+          include: {
+            problem: {
+              select: {
+                id: true,
+                title: true,
+                slug: true,
+                difficulty: true,
+              },
+            },
+          },
+          orderBy: { sortOrder: "asc" },
+        },
+      },
+    });
+  });
+
+  if (updated.isPublished) {
+    await scheduleContestReminders({
+      contestId: updated.id,
+      startAt: updated.startAt,
+    });
+  }
+
+  if (!existing.isPublished && updated.isPublished) {
+    await dispatchNotificationEventService({
+      event: "CONTEST_PUBLISHED",
+      actorUserId,
+      payload: {
+        contestId: updated.id,
+        contestTitle: updated.title,
+      },
+    });
+  }
+
+  return updated;
+};
+
 export const registerForContestService = async ({ contestId, userId }) => {
   const contest = await prisma.contest.findUnique({
     where: { id: contestId },
     select: {
       id: true,
       isPublished: true,
-      startAt: true,
       endAt: true,
     },
   });

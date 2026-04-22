@@ -11,8 +11,8 @@ const router = express.Router();
 
 router.use(authMiddleware, adminMiddleware);
 
-router.get("/users.csv", exportUsersController);
-router.get("/submissions.csv", exportSubmissionsController);
-router.get("/problems.csv", exportProblemsController);
+router.get("/users", exportUsersController);
+router.get("/submissions", exportSubmissionsController);
+router.get("/problems", exportProblemsController);
 
 export default router;

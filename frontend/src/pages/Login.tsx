@@ -1,5 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -34,15 +34,6 @@ declare global {
 }
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-
-type LoginFormState = {
-  email: string;
-  password: string;
-};
-
-type AuthUser = {
-  role?: string;
-} | null;
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -96,14 +87,19 @@ function FloatingOrb({
 
 const loadRecaptcha = () =>
   new Promise<void>((resolve, reject) => {
+    if (!RECAPTCHA_SITE_KEY) {
+      resolve();
+      return;
+    }
+
     if (window.grecaptcha) {
       resolve();
       return;
     }
 
-    const existing = document.querySelector<HTMLScriptElement>(
+    const existing = document.querySelector(
       'script[src^="https://www.google.com/recaptcha/api.js"]'
-    );
+    ) as HTMLScriptElement | null;
 
     if (existing) {
       existing.addEventListener("load", () => resolve(), { once: true });
@@ -124,58 +120,45 @@ const loadRecaptcha = () =>
     document.body.appendChild(script);
   });
 
-function getRedirectPath(role: string, fallback: string) {
-  if (role === "ADMIN") return "/admin-dashboard";
-  if (role === "CREATOR") return "/creator-dashboard";
-  return fallback;
-}
-
-function getErrorMessage(error: unknown) {
-  if (error && typeof error === "object") {
-    const err = error as {
-      response?: { data?: { message?: string } };
-      message?: string;
-    };
-
-    return err.response?.data?.message || err.message || "Login failed";
-  }
-
-  return "Login failed";
-}
-
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   const { login, isAuthenticated, loading } = useAuth();
 
-  const [form, setForm] = useState<LoginFormState>({
+  const [form, setForm] = useState({
     email: "",
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
-  const from =
-    (location.state as { from?: string } | null)?.from || "/dashboard";
+  const from = useMemo(() => {
+    const state = location.state as { from?: string | { pathname?: string } } | null;
+    if (typeof state?.from === "string") return state.from;
+    if (typeof state?.from?.pathname === "string") return state.from.pathname;
+    return "/dashboard";
+  }, [location.state]);
 
   useEffect(() => {
-    void loadRecaptcha().catch(() => {});
+    void loadRecaptcha().catch(() => {
+      // silent preload failure, handled at submit time if token is required
+    });
   }, []);
 
   if (!loading && isAuthenticated) {
     return <Navigate to={from} replace />;
   }
 
-  const getRecaptchaToken = async (): Promise<string> => {
+  const getRecaptchaToken = async () => {
     if (!RECAPTCHA_SITE_KEY) {
-      throw new Error("Missing VITE_RECAPTCHA_SITE_KEY");
+      return undefined;
     }
 
     await loadRecaptcha();
 
     return new Promise<string>((resolve, reject) => {
       if (!window.grecaptcha) {
-        reject(new Error("reCAPTCHA is not available"));
+        reject(new Error("reCAPTCHA not available"));
         return;
       }
 
@@ -201,25 +184,36 @@ export default function Login() {
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (submitting) return;
+    if (!form.email.trim() || !form.password.trim() || submitting) {
+      return;
+    }
 
     try {
       setSubmitting(true);
-
       const recaptchaToken = await getRecaptchaToken();
 
-      const nextUser = (await login({
+      const nextUser = await login({
         email: form.email.trim(),
         password: form.password,
         recaptchaToken,
-      })) as AuthUser;
+      });
 
       toast.success("Welcome back");
 
       const role = String(nextUser?.role ?? "");
-      navigate(getRedirectPath(role, from), { replace: true });
-    } catch (error) {
-      toast.error(getErrorMessage(error));
+      if (role === "ADMIN") {
+        navigate("/admin-dashboard", { replace: true });
+      } else if (role === "CREATOR") {
+        navigate("/creator-dashboard", { replace: true });
+      } else {
+        navigate(from, { replace: true });
+      }
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ||
+          error?.message ||
+          "Login failed"
+      );
     } finally {
       setSubmitting(false);
     }
@@ -256,140 +250,49 @@ export default function Login() {
               Focused practice should feel like a real product.
             </h1>
 
-            <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
-              This side should sell the experience with a believable preview of
-              the workspace users are signing into.
+            <p className="mt-6 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
+              AlgoForge is built for serious problem solving, contest pressure,
+              progress tracking, and clean learning loops. Static practice is
+              useless. Structured momentum is not.
             </p>
 
-            <div className="spotlight-card mt-8 overflow-hidden p-5 md:p-6">
-              <div className="feature-glow absolute inset-0 opacity-80" />
-              <div className="relative z-10">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary/80">
-                      Practice snapshot
-                    </p>
-                    <h2 className="mt-2 font-heading text-2xl font-black md:text-3xl">
-                      Cleaner workflow. Better signals.
-                    </h2>
-                  </div>
-
-                  <div className="rounded-full border border-border/70 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-                    Live preview
-                  </div>
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-border/70 bg-card/50 p-4 backdrop-blur-xl">
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">Targeted practice</p>
                 </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Solve with intent instead of randomly clicking around.
+                </p>
+              </div>
 
-                <div className="mt-6 grid gap-4 sm:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-[1.5rem] border border-border/70 bg-background/50 p-4">
-                    <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                      Today
-                    </p>
-
-                    <div className="mt-4 grid gap-3">
-                      <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">
-                            Daily streak
-                          </span>
-                          <Target className="h-4 w-4 text-primary" />
-                        </div>
-                        <p className="mt-3 font-heading text-3xl font-black">
-                          12
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          days active
-                        </p>
-                      </div>
-
-                      <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">
-                            Contest rank
-                          </span>
-                          <Trophy className="h-4 w-4 text-accent" />
-                        </div>
-                        <p className="mt-3 font-heading text-3xl font-black">
-                          #214
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          this week
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-[1.5rem] border border-border/70 bg-background/50 p-4">
-                    <div className="rounded-2xl border border-border/70 bg-card/70 p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold">
-                          AI Hint Preview
-                        </span>
-                        <BrainCircuit className="h-4 w-4 text-primary" />
-                      </div>
-                      <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        “Try tracking frequency while scanning once, instead of
-                        sorting first.”
-                      </p>
-                    </div>
-
-                    <div className="mt-4 rounded-2xl border border-border/70 bg-card/70 p-4">
-                      <p className="text-sm font-semibold">Recent progress</p>
-                      <div className="mt-4 grid grid-cols-7 gap-2">
-                        {[60, 36, 74, 52, 86, 46, 68].map((value, index) => (
-                          <div
-                            key={index}
-                            className="flex h-24 items-end rounded-full bg-background/60 p-1"
-                          >
-                            <div
-                              className="w-full rounded-full bg-gradient-to-t from-primary via-fuchsia-400 to-accent"
-                              style={{ height: `${value}%` }}
-                            />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-border/70 bg-card/70 px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                          Solved this week
-                        </p>
-                        <p className="mt-2 text-xl font-bold">18 problems</p>
-                      </div>
-
-                      <div className="rounded-2xl border border-border/70 bg-card/70 px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                          Interview focus
-                        </p>
-                        <p className="mt-2 text-xl font-bold">
-                          Arrays + Graphs
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+              <div className="rounded-2xl border border-border/70 bg-card/50 p-4 backdrop-blur-xl">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">Contest pressure</p>
                 </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  Train under real constraints, not fake comfort.
+                </p>
+              </div>
 
-                <div className="mt-5 flex flex-wrap gap-3">
-                  {[
-                    "Focused practice",
-                    "Real progress visibility",
-                    "Interview-first workflow",
-                  ].map((item) => (
-                    <span
-                      key={item}
-                      className="rounded-full border border-border/70 bg-background/55 px-4 py-2 text-xs uppercase tracking-[0.18em] text-muted-foreground"
-                    >
-                      {item}
-                    </span>
-                  ))}
+              <div className="rounded-2xl border border-border/70 bg-card/50 p-4 backdrop-blur-xl">
+                <div className="flex items-center gap-2">
+                  <BrainCircuit className="h-4 w-4 text-primary" />
+                  <p className="text-sm font-semibold">Feedback loops</p>
                 </div>
+                <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                  See weak areas fast and stop repeating dumb mistakes.
+                </p>
               </div>
             </div>
           </motion.div>
 
           <motion.div className="ml-auto w-full max-w-md" {...fadeUp(0.08)}>
-            <div className="spotlight-card overflow-hidden p-7 md:p-8">
+            <div className="spotlight-card relative overflow-hidden p-7 md:p-8">
               <div className="feature-glow absolute inset-0 opacity-80" />
+
               <div className="relative z-10">
                 <div className="flex items-center justify-between gap-3">
                   <div>
@@ -402,7 +305,10 @@ export default function Login() {
                   </div>
 
                   <div className="rounded-full border border-border/70 bg-background/60 px-3 py-1 text-xs text-muted-foreground">
-                    Secure login
+                    <span className="inline-flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                      Secure login
+                    </span>
                   </div>
                 </div>
 
@@ -410,8 +316,9 @@ export default function Login() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-white/15 hover:bg-zinc-950 hover:text-white dark:hover:bg-zinc-900"
+                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-primary/30 hover:bg-primary/10 hover:text-foreground"
                     onClick={startGithubLogin}
+                    disabled={submitting}
                   >
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
@@ -420,8 +327,9 @@ export default function Login() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-blue-500 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:border-blue-400/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
+                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-primary/30 hover:bg-primary/10 hover:text-foreground"
                     onClick={startGoogleLogin}
+                    disabled={submitting}
                   >
                     <GoogleIcon />
                     <span className="ml-2">Google</span>
@@ -442,7 +350,7 @@ export default function Login() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="Enter your email address"
+                      placeholder="you@example.com"
                       className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
                       value={form.email}
                       onChange={(e) =>
@@ -451,6 +359,7 @@ export default function Login() {
                           email: e.target.value,
                         }))
                       }
+                      autoComplete="email"
                       required
                     />
                   </div>
@@ -479,8 +388,10 @@ export default function Login() {
                             password: e.target.value,
                           }))
                         }
+                        autoComplete="current-password"
                         required
                       />
+
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
@@ -499,9 +410,13 @@ export default function Login() {
                   </div>
 
                   <Button
-                    className="group h-12 w-full rounded-2xl border-0 bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(100,90,255,0.24)]"
+                    className="group h-12 w-full rounded-2xl border-0 bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(100,90,255,0.20)] transition hover:bg-primary/90"
                     type="submit"
-                    disabled={submitting}
+                    disabled={
+                      submitting ||
+                      !form.email.trim() ||
+                      !form.password.trim()
+                    }
                   >
                     {submitting ? (
                       <>
@@ -526,26 +441,6 @@ export default function Login() {
                     Create one
                   </Link>
                 </p>
-
-                <div className="mt-6 rounded-2xl border border-border/70 bg-background/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <p className="text-sm leading-7 text-muted-foreground">
-                      One login flow is enough. Role-based redirect should happen
-                      after authentication, not through separate login pages.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-border/70 bg-background/50 p-4">
-                  <div className="flex items-start gap-3">
-                    <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <p className="text-sm leading-7 text-muted-foreground">
-                      This login is protected with reCAPTCHA to reduce abuse and
-                      bot-based sign-in attempts.
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </motion.div>

@@ -46,6 +46,9 @@ enum AuditAction {
   LOGIN_FAILED
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
+  SYSTEM_SETTINGS_UPDATED
+  PROBLEM_APPROVED
+  PROBLEM_REJECTED
 }
 
 model User {
@@ -74,19 +77,25 @@ model User {
   subscriptionStatus     String?
   currentPeriodEnd       DateTime?
 
-  problems             Problem[]                  @relation("ProblemAuthor")
-  submissions          Submission[]
-  passwordResetTokens  PasswordResetToken[]
-  passwordResetOtps    PasswordResetOtp[]
-  aiUsages             AIUsage[]
-  userBadges           UserBadge[]
-  dailyAttempts        UserDailyQuestionAttempt[]
-  notifications        Notification[]
-  contestRegistrations ContestRegistration[]
-  createdContests      Contest[]                  @relation("ContestAuthor")
-  actedAuditLogs       AuditLog[]                 @relation("AuditActor")
-  targetedAuditLogs    AuditLog[]                 @relation("AuditTarget")
-  loginEvents          LoginEvent[]
+  problems                 Problem[]                  @relation("ProblemAuthor")
+  submissions              Submission[]
+  passwordResetTokens      PasswordResetToken[]
+  passwordResetOtps        PasswordResetOtp[]
+  aiUsages                 AIUsage[]
+  userBadges               UserBadge[]
+  dailyAttempts            UserDailyQuestionAttempt[]
+  notifications            Notification[]
+  contestRegistrations     ContestRegistration[]
+  createdContests          Contest[]                  @relation("ContestAuthor")
+  actedAuditLogs           AuditLog[]                 @relation("AuditActor")
+  targetedAuditLogs        AuditLog[]                 @relation("AuditTarget")
+  loginEvents              LoginEvent[]
+  updatedSystemSettings    SystemSetting[]
+  problemDiscussions       ProblemDiscussion[]
+  problemDiscussionReplies ProblemDiscussionReply[]
+  learningPaths            LearningPath[]
+  problemBookmarks         ProblemBookmark[]
+  problemNotes             ProblemNote[]
 
   @@index([provider, providerId])
   @@index([role])
@@ -112,19 +121,27 @@ model Problem {
   referenceSolutions Json?
   driverCode         Json?
   isPublished        Boolean  @default(false)
+  reviewStatus       String?
+  reviewNotes        String?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
   createdById String?
   createdBy   User?   @relation("ProblemAuthor", fields: [createdById], references: [id], onDelete: SetNull)
 
-  testCases       TestCase[]
-  submissions     Submission[]
-  dailyQuestions  DailyQuestion[] // changed from singular to one-to-many
-  contestProblems ContestProblem[]
+  testCases         TestCase[]
+  submissions       Submission[]
+  dailyQuestions    DailyQuestion[]
+  contestProblems   ContestProblem[]
+  discussions       ProblemDiscussion[]
+  bookmarks         ProblemBookmark[]
+  notes             ProblemNote[]
+  learningPathItems LearningPathItem[]
+  review            ProblemReview?
 
   @@index([difficulty])
   @@index([isPublished])
+  @@index([reviewStatus])
 }
 
 model TestCase {
@@ -153,7 +170,7 @@ model Submission {
   passedCount   Int      @default(0)
   totalCount    Int      @default(0)
   createdAt     DateTime @default(now())
-  updatedAt     DateTime @default(now()) @updatedAt
+  updatedAt     DateTime @updatedAt
 
   userId    String
   problemId String
@@ -245,7 +262,7 @@ model DailyQuestion {
   attempts UserDailyQuestionAttempt[]
 
   @@index([activeDate])
-  @@index([problemId]) // added index instead of unique
+  @@index([problemId])
 }
 
 model UserDailyQuestionAttempt {
@@ -380,4 +397,117 @@ model PaymentAudit {
 
   @@index([status])
   @@index([createdAt])
+}
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       Json
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+model ProblemDiscussion {
+  id        String   @id @default(uuid())
+  problemId String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  problem Problem                  @relation(fields: [problemId], references: [id], onDelete: Cascade)
+  user    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  replies ProblemDiscussionReply[]
+
+  @@index([problemId])
+  @@index([userId])
+}
+
+model ProblemDiscussionReply {
+  id           String   @id @default(uuid())
+  discussionId String
+  userId       String
+  content      String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  discussion ProblemDiscussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([discussionId])
+  @@index([userId])
+}
+
+model LearningPath {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  audience    String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User?              @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  items     LearningPathItem[]
+}
+
+model LearningPathItem {
+  id             String @id @default(uuid())
+  learningPathId String
+  problemId      String
+  sortOrder      Int    @default(0)
+
+  learningPath LearningPath @relation(fields: [learningPathId], references: [id], onDelete: Cascade)
+  problem      Problem      @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([learningPathId, problemId])
+  @@index([learningPathId])
+  @@index([problemId])
+}
+
+model ProblemBookmark {
+  id        String   @id @default(uuid())
+  userId    String
+  problemId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+}
+
+model ProblemNote {
+  id        String   @id @default(uuid())
+  userId    String
+  problemId String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, problemId])
+  @@index([userId])
+  @@index([problemId])
+}
+
+model ProblemReview {
+  id         String   @id @default(uuid())
+  problemId  String   @unique
+  status     String
+  reason     String?
+  reviewedBy String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

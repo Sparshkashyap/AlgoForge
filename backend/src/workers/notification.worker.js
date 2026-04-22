@@ -8,6 +8,8 @@ import {
 import { assignDailyQuestionService } from "../services/dailyQuestion.service.js";
 import { emitToUser } from "../services/socket.service.js";
 
+console.log("Notification worker initialized");
+
 const CHUNK_SIZE = 500;
 
 const chunkArray = (items, size) => {
@@ -20,6 +22,7 @@ const chunkArray = (items, size) => {
 
 const emitBulk = (list) => {
   for (const item of list) {
+    if (!item?.userId) continue;
     emitToUser(item.userId, "notification:new", item);
   }
 };

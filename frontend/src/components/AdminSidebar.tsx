@@ -4,15 +4,30 @@ import {
   PlusSquare,
   ShieldCheck,
   Sparkles,
+  Users,
+  BadgeIndianRupee,
+  ClipboardCheck,
+  FileSpreadsheet,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 const links = [
   { label: "Admin Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
   { label: "Create Problem", href: "/create-problem", icon: PlusSquare },
+  { label: "Users", href: "/admin-users", icon: Users },
+  { label: "Sales", href: "/admin-sales", icon: BadgeIndianRupee },
+  { label: "Review Queue", href: "/admin-problem-review", icon: ClipboardCheck },
+  { label: "Exports", href: "/admin-exports", icon: FileSpreadsheet },
+  { label: "Subscriptions", href: "/admin-subscriptions", icon: BadgeIndianRupee },
 ];
 
 export default function AdminSidebar() {
   const location = useLocation();
+  const { user } = useAuth();
+
+  if (user?.role !== "ADMIN") {
+    return null;
+  }
 
   return (
     <aside className="overflow-hidden rounded-[1.8rem] border border-border/70 bg-card/90 p-4 backdrop-blur-2xl">
@@ -23,7 +38,7 @@ export default function AdminSidebar() {
 
         <p className="mt-4 font-heading text-xl font-black">Admin Panel</p>
         <p className="mt-2 text-sm leading-7 text-muted-foreground">
-          Manage problems, control publishing flow, and keep platform content clean.
+          Moderate users, review content, manage pricing, exports, and keep platform quality under control.
         </p>
 
         <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs uppercase tracking-[0.16em] text-primary">

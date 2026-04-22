@@ -1,7 +1,8 @@
 import { toast } from "react-toastify";
-import { Download } from "lucide-react";
+import { Download, FileSpreadsheet } from "lucide-react";
 
 import { Navbar } from "@/components/Navbar";
+import AdminSidebar from "@/components/AdminSidebar";
 import { Button } from "@/components/ui/button";
 import {
   downloadProblemsExportApi,
@@ -50,35 +51,81 @@ export default function AdminExports() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <div className="container py-12 md:py-16">
-        <h1 className="text-4xl font-black">Admin Exports</h1>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Export raw platform data directly. No fluff, just downloads.
-        </p>
+      <div className="container py-8">
+        <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+          <AdminSidebar />
 
-        <div className="mt-8 grid gap-4 md:max-w-xl">
-          <Button className="rounded-xl" onClick={handleDownloadUsers}>
-            <Download className="mr-2 h-4 w-4" />
-            Export Users CSV
-          </Button>
+          <div>
+            <div className="mb-6">
+              <h1 className="font-heading text-3xl font-black md:text-4xl">
+                Admin Exports
+              </h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Export raw platform data directly. No fake buttons. Actual downloads.
+              </p>
+            </div>
 
-          <Button
-            variant="outline"
-            className="rounded-xl"
-            onClick={handleDownloadSubmissions}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Submissions CSV
-          </Button>
+            <div className="grid gap-4 md:max-w-2xl">
+              <div className="rounded-[1.6rem] border border-border/70 bg-card/75 p-5">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">Users export</p>
+                    <p className="text-sm text-muted-foreground">
+                      Download registered users, roles, plans, and status.
+                    </p>
+                  </div>
+                </div>
 
-          <Button
-            variant="outline"
-            className="rounded-xl"
-            onClick={handleDownloadProblems}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export Problems CSV
-          </Button>
+                <Button className="mt-5 rounded-xl" onClick={handleDownloadUsers}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Users CSV
+                </Button>
+              </div>
+
+              <div className="rounded-[1.6rem] border border-border/70 bg-card/75 p-5">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">Submissions export</p>
+                    <p className="text-sm text-muted-foreground">
+                      Download submission records for review and analysis.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="mt-5 rounded-xl"
+                  onClick={handleDownloadSubmissions}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Submissions CSV
+                </Button>
+              </div>
+
+              <div className="rounded-[1.6rem] border border-border/70 bg-card/75 p-5">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="font-semibold">Problems export</p>
+                    <p className="text-sm text-muted-foreground">
+                      Download problem inventory with publishing and premium flags.
+                    </p>
+                  </div>
+                </div>
+
+                <Button
+                  variant="outline"
+                  className="mt-5 rounded-xl"
+                  onClick={handleDownloadProblems}
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export Problems CSV
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

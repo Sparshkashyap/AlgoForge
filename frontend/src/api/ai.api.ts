@@ -29,3 +29,8 @@ export const reviewCodeApi = async (payload: {
   const response = await API.post("/ai/review", payload);
   return response.data;
 };
+
+export const askAiAssistantApi = async (message: string) => {
+  const response = await API.post("/ai/chat", { message });
+  return response.data;
+};

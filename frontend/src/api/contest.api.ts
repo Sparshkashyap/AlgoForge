@@ -10,6 +10,11 @@ export const getContestByIdApi = async (contestId: string) => {
   return response.data;
 };
 
+export const getContestRankingApi = async (contestId: string) => {
+  const response = await API.get(`/contests/${contestId}/ranking`);
+  return response.data;
+};
+
 export const registerForContestApi = async (contestId: string) => {
   const response = await API.post(`/contests/${contestId}/register`);
   return response.data;

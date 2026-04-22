@@ -10,7 +10,7 @@ export const updateMyProfileApi = async (payload: {
   email?: string;
   avatarUrl?: string;
 }) => {
-  const response = await API.put("/users/me", payload);
+  const response = await API.patch("/users/me", payload);
   return response.data;
 };
 
@@ -24,6 +24,21 @@ export const uploadAvatarApi = async (file: File) => {
     },
   });
 
+  return response.data;
+};
+
+export const removeMyAvatarApi = async () => {
+  const response = await API.delete("/users/me/avatar");
+  return response.data;
+};
+
+export const updateUserAvatarApi = async (
+  userId: string,
+  avatarUrl: string
+) => {
+  const response = await API.patch(`/users/admin/${userId}/avatar`, {
+    avatarUrl,
+  });
   return response.data;
 };
 
@@ -56,6 +71,15 @@ export const markNotificationReadApi = async (notificationId: string) => {
 
 export const markAllNotificationsReadApi = async () => {
   const response = await API.patch("/users/notifications/read-all");
+  return response.data;
+};
+
+export const getMyHeatmapApi = async (days?: number) => {
+  const url = days
+    ? `/users/heatmap/me?days=${days}`
+    : "/users/heatmap/me";
+
+  const response = await API.get(url);
   return response.data;
 };
 

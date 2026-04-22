@@ -28,6 +28,46 @@ const parseJson = (text) => {
   }
 };
 
+const extractJsonFromText = (text) => {
+  const cleaned = String(text || "").trim();
+
+  if (!cleaned) {
+    const error = new Error("AI returned empty response");
+    error.statusCode = 500;
+    throw error;
+  }
+
+  try {
+    return parseJson(cleaned);
+  } catch {
+    const fencedMatch = cleaned.match(/```json\s*([\s\S]*?)\s*```/i);
+    if (fencedMatch?.[1]) {
+      return parseJson(fencedMatch[1].trim());
+    }
+
+    const objectMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (objectMatch?.[0]) {
+      return parseJson(objectMatch[0].trim());
+    }
+
+    const error = new Error("AI returned invalid JSON");
+    error.statusCode = 500;
+    throw error;
+  }
+};
+
+const saveAIUsage = async ({ userId, feature, prompt }) => {
+  if (!userId) return;
+
+  await prisma.aIUsage.create({
+    data: {
+      userId,
+      feature,
+      prompt,
+    },
+  });
+};
+
 export const generateProblemCodePackService = async ({
   userId,
   title,
@@ -74,14 +114,12 @@ ${referenceCode}
   });
 
   const text = response.text?.trim() || "";
-  const data = parseJson(text);
+  const data = extractJsonFromText(text);
 
-  await prisma.aIUsage.create({
-    data: {
-      userId,
-      feature: "GENERATE_CODE_PACK",
-      prompt: title,
-    },
+  await saveAIUsage({
+    userId,
+    feature: "GENERATE_CODE_PACK",
+    prompt: title,
   });
 
   return data;
@@ -112,12 +150,10 @@ ${code}
     contents: prompt,
   });
 
-  await prisma.aIUsage.create({
-    data: {
-      userId,
-      feature: "AI_HINT",
-      prompt: title,
-    },
+  await saveAIUsage({
+    userId,
+    feature: "AI_HINT",
+    prompt: title,
   });
 
   return {
@@ -157,13 +193,66 @@ ${code}
     contents: prompt,
   });
 
-  await prisma.aIUsage.create({
-    data: {
-      userId,
-      feature: "AI_REVIEW",
-      prompt: title,
-    },
+  await saveAIUsage({
+    userId,
+    feature: "AI_REVIEW",
+    prompt: title,
   });
 
-  return parseJson(response.text?.trim() || "{}");
+  return extractJsonFromText(response.text?.trim() || "{}");
+};
+
+export const basicAiExplainService = async ({ userId, code, language }) => {
+  if (!aiClient) {
+    return {
+      explanation: `Code analysis:
+Language: ${language}
+
+This solution works but may not be optimal.
+Try improving time complexity.
+
+Code:
+${code}`,
+    };
+  }
+
+  const prompt = `
+You are a senior coding mentor.
+
+Explain the following code clearly and briefly.
+Focus on:
+- what the code is doing
+- the core approach
+- likely time complexity
+- one or two practical improvements
+
+Return plain text only.
+
+Language: ${language}
+
+Code:
+${code}
+`;
+
+  const response = await aiClient.models.generateContent({
+    model: env.GEMINI_MODEL,
+    contents: prompt,
+  });
+
+  await saveAIUsage({
+    userId,
+    feature: "AI_EXPLAIN",
+    prompt: language,
+  });
+
+  return {
+    explanation: response.text?.trim() || `Code analysis:
+Language: ${language}
+
+This solution works but may not be optimal.
+Try improving time complexity.
+
+Code:
+${code}`,
+  };
 };

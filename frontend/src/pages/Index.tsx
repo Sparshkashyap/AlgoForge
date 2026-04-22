@@ -7,6 +7,10 @@ import {
   ShieldCheck,
   Sparkles,
   TimerReset,
+  Trophy,
+  Bot,
+  Map,
+  Bookmark,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
@@ -31,6 +35,8 @@ const proofChips = [
   "Contest mode",
   "Topic progress",
   "Interview prep focus",
+  "Leaderboard",
+  "Bookmarks",
 ];
 
 const previewPoints = [
@@ -57,6 +63,29 @@ const promisePoints = [
   "Built to feel like a platform, not a side project",
 ];
 
+const quickLinks = [
+  {
+    icon: Trophy,
+    title: "Leaderboard",
+    href: "/leaderboard",
+  },
+  {
+    icon: Bot,
+    title: "AI Chat",
+    href: "/ai-chat",
+  },
+  {
+    icon: Map,
+    title: "Roadmap",
+    href: "/roadmap",
+  },
+  {
+    icon: Bookmark,
+    title: "Bookmarks",
+    href: "/bookmarks",
+  },
+];
+
 export default function Index() {
   const { isAuthenticated } = useAuth();
 
@@ -68,7 +97,7 @@ export default function Index() {
         <HeroOrbBackground />
 
         <section className="relative">
-          <div className="container relative z-10 pt-20 pb-14 sm:pt-24 md:pt-32 md:pb-24">
+          <div className="container relative z-10 pb-14 pt-20 sm:pt-24 md:pb-24 md:pt-32">
             <motion.div
               initial={{ opacity: 0, y: 26 }}
               animate={{ opacity: 1, y: 0 }}
@@ -95,8 +124,8 @@ export default function Index() {
 
                 <p className="mx-auto mt-4 max-w-3xl px-3 text-base leading-8 text-muted-foreground sm:px-6 md:text-xl md:leading-9">
                   A coding prep platform that feels focused from the first
-                  scroll. Better hierarchy, cleaner workflows, and a UI that
-                  doesn’t look like every other clone.
+                  scroll. Problems, AI help, leaderboard, roadmap, bookmarks,
+                  contests, and analytics should all feel visible.
                 </p>
 
                 <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
@@ -188,6 +217,25 @@ export default function Index() {
                     <h3 className="mt-3 text-2xl font-bold">
                       Product should feel credible fast.
                     </h3>
+
+                    <div className="mt-5 grid gap-3">
+                      {quickLinks.map((item) => {
+                        const Icon = item.icon;
+
+                        return (
+                          <Link
+                            key={item.title}
+                            to={item.href}
+                            className="rounded-xl border border-border/70 bg-background/50 p-4 transition hover:border-primary/30 hover:bg-primary/5"
+                          >
+                            <div className="flex items-center gap-3">
+                              <Icon className="h-4 w-4 text-primary" />
+                              <span className="font-medium">{item.title}</span>
+                            </div>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </motion.div>
               </div>

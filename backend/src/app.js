@@ -23,6 +23,15 @@ import billingRoutes from "./routes/billing.routes.js";
 import webhookRoutes from "./routes/webhook.routes.js";
 import contestRoutes from "./routes/contest.routes.js";
 import notificationRoutes from "./routes/notification.routes.js";
+import leaderboardRoutes from "./routes/leaderboard.routes.js";
+import roadmapRoutes from "./routes/roadmap.routes.js";
+import learningPathRoutes from "./routes/learningPath.routes.js";
+import bookmarkRoutes from "./routes/bookmark.routes.js";
+import problemNoteRoutes from "./routes/problemNote.routes.js";
+import ragChatRoutes from "./routes/ragChat.routes.js";
+import gamificationRoutes from "./routes/gamification.routes.js";
+import discussionRoutes from "./routes/discussion.routes.js";
+import problemReviewRoutes from "./routes/problem.review.routes.js";
 
 import { notFoundMiddleware } from "./middleware/notFound.middleware.js";
 import { errorMiddleware } from "./middleware/error.middleware.js";
@@ -61,7 +70,7 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-// ⚠️ Razorpay webhook MUST come BEFORE json parser
+// Razorpay webhook MUST come BEFORE json parser
 app.use(
   "/api/webhooks/razorpay",
   express.raw({
@@ -78,7 +87,7 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Rate limiting AFTER body parse (better for real-world payload handling)
+// Rate limiting
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -123,9 +132,18 @@ app.use("/api/export", exportRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/contests", contestRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/leaderboard", leaderboardRoutes);
+app.use("/api/roadmap", roadmapRoutes);
+app.use("/api/learning-paths", learningPathRoutes);
+app.use("/api/bookmarks", bookmarkRoutes);
+app.use("/api/problem-notes", problemNoteRoutes);
+app.use("/api/rag-chat", ragChatRoutes);
+app.use("/api/gamification", gamificationRoutes);
+app.use("/api/discussions", discussionRoutes);
+app.use("/api/problem-reviews", problemReviewRoutes);
 
 // Errors
 app.use(notFoundMiddleware);
 app.use(errorMiddleware);
 
-export default app;
+export default app; 

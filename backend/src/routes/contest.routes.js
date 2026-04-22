@@ -8,8 +8,10 @@ import {
   registerForContestController,
   updateContestController,
 } from "../controllers/contest.controller.js";
+import { getContestRankingController } from "../controllers/contest.ranking.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { creatorOrAdminMiddleware } from "../middleware/creatorOrAdmin.middleware.js";
+import { adminMiddleware } from "../middleware/admin.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
 import {
   contestIdParamSchema,
@@ -18,15 +20,23 @@ import {
 
 const router = express.Router();
 
+/**
+ * IMPORTANT:
+ * static routes must come before dynamic :contestId route
+ * otherwise /me/list becomes contestId="me"
+ */
+
+// public
 router.get("/", listPublishedContestsController);
+router.get("/me/list", authMiddleware, adminMiddleware, listMyCreatedContestsController);
+router.get("/:contestId/ranking", validate(contestIdParamSchema), getContestRankingController);
 router.get("/:contestId", validate(contestIdParamSchema), getContestByIdController);
 
-router.get("/me/list", authMiddleware, creatorOrAdminMiddleware, listMyCreatedContestsController);
-
+// protected admin routes
 router.post(
   "/",
   authMiddleware,
-  creatorOrAdminMiddleware,
+  adminMiddleware,
   validate(createContestSchema),
   createContestController
 );
@@ -34,7 +44,7 @@ router.post(
 router.put(
   "/:contestId",
   authMiddleware,
-  creatorOrAdminMiddleware,
+  adminMiddleware,
   validate(contestIdParamSchema),
   updateContestController
 );
@@ -42,11 +52,12 @@ router.put(
 router.delete(
   "/:contestId",
   authMiddleware,
-  creatorOrAdminMiddleware,
+  adminMiddleware,
   validate(contestIdParamSchema),
   deleteContestController
 );
 
+// user registration
 router.post(
   "/:contestId/register",
   authMiddleware,
@@ -55,52 +66,3 @@ router.post(
 );
 
 export default router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

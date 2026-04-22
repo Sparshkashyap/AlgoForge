@@ -37,17 +37,42 @@ export default function NotificationBell() {
     return notifications.slice(0, 8);
   }, [notifications]);
 
+  const handleOpenNotification = async (item: {
+    id?: string;
+    isRead?: boolean;
+    data?: Record<string, unknown> | null;
+  }) => {
+    if (item.id && !item.isRead) {
+      await markOneRead(item.id);
+    }
+
+    const slug =
+      typeof item.data?.slug === "string" ? item.data.slug : null;
+
+    if (slug) {
+      navigate(`/problems/${slug}`);
+    } else {
+      navigate("/notifications");
+    }
+
+    setOpen(false);
+  };
+
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button className="relative rounded-full border border-border/70 bg-card/70 p-2.5 shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition hover:bg-card">
-          <Bell className="h-4.5 w-4.5 text-foreground" />
+        <button
+          type="button"
+          aria-label="Notifications"
+          className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/70 bg-card/70 text-foreground shadow-[0_10px_24px_rgba(0,0,0,0.08)] transition hover:border-primary/30 hover:bg-primary/5"
+        >
+          <Bell className="h-4 w-4" />
 
-          {unreadCount > 0 ? (
-            <span className="absolute -right-1 -top-1 inline-flex min-w-[18px] items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-bold text-primary-foreground">
-              {unreadCount > 9 ? "9+" : unreadCount}
+          {unreadCount > 0 && (
+            <span className="absolute -right-1 -top-1 inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
+              {unreadCount > 99 ? "99+" : unreadCount}
             </span>
-          ) : null}
+          )}
         </button>
       </DropdownMenuTrigger>
 
@@ -60,19 +85,35 @@ export default function NotificationBell() {
             Notifications
           </DropdownMenuLabel>
 
-          <Button
-            type="button"
-            variant="ghost"
-            className="h-8 rounded-lg px-2 text-xs"
-            onClick={async (e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              await markAllRead();
-            }}
-          >
-            <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
-            Mark all read
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 rounded-lg px-2 text-xs"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate("/notifications");
+                setOpen(false);
+              }}
+            >
+              View all
+            </Button>
+
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-8 rounded-lg px-2 text-xs"
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await markAllRead();
+              }}
+            >
+              <CheckCheck className="mr-1.5 h-3.5 w-3.5" />
+              Mark all read
+            </Button>
+          </div>
         </div>
 
         <DropdownMenuSeparator className="m-0" />
@@ -83,24 +124,11 @@ export default function NotificationBell() {
               Loading notifications...
             </div>
           ) : visibleNotifications.length ? (
-            visibleNotifications.map((item) => (
+            visibleNotifications.map((item, index) => (
               <button
-                key={item.id}
+                key={item.id || index}
                 type="button"
-                onClick={async () => {
-                  if (!item.isRead) {
-                    await markOneRead(item.id);
-                  }
-
-                  const slug =
-                    typeof item.data?.slug === "string" ? item.data.slug : null;
-
-                  if (slug) {
-                    navigate(`/problems/${slug}`);
-                  }
-
-                  setOpen(false);
-                }}
+                onClick={() => void handleOpenNotification(item)}
                 className={`block w-full border-b border-border/60 px-4 py-4 text-left transition hover:bg-background/60 ${
                   item.isRead ? "opacity-75" : "bg-primary/5"
                 }`}
@@ -115,9 +143,9 @@ export default function NotificationBell() {
                     </p>
                   </div>
 
-                  {!item.isRead ? (
+                  {!item.isRead && (
                     <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-primary" />
-                  ) : null}
+                  )}
                 </div>
 
                 <p className="mt-2 text-xs uppercase tracking-[0.14em] text-muted-foreground">

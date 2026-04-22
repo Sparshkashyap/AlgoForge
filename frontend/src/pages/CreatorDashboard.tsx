@@ -1,30 +1,48 @@
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { getAdminProblemsApi } from "@/api/adminProblem.api";
+import API from "@/api/axios";
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, FileText, CheckCircle2, DraftingCompass } from "lucide-react";
+import {
+  Plus,
+  FileText,
+  CheckCircle2,
+  DraftingCompass,
+  ArrowRight,
+} from "lucide-react";
+import { toast } from "react-toastify";
 
 export default function CreatorDashboard() {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [problems, setProblems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getAdminProblemsApi()
-      .then((data) => setProblems(data.data || []))
-      .finally(() => setLoading(false));
+    const load = async () => {
+      try {
+        setLoading(true);
+        const response = await API.get("/problems/me");
+        setProblems(response?.data?.data || []);
+      } catch (error: any) {
+        toast.error(
+          error?.response?.data?.message || "Failed to load creator problems"
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void load();
   }, []);
 
-  const mine = useMemo(
-    () => problems.filter((item) => item.createdBy?.id === user?.id),
-    [problems, user]
+  const published = useMemo(
+    () => problems.filter((item) => item.isPublished).length,
+    [problems]
   );
-
-  const published = mine.filter((item) => item.isPublished).length;
-  const drafts = mine.length - published;
+  const drafts = problems.length - published;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -36,7 +54,6 @@ export default function CreatorDashboard() {
         transition={{ duration: 0.3 }}
         className="container py-10"
       >
-        {/* HEADER */}
         <div className="spotlight-card p-6 md:p-7">
           <div className="feature-glow absolute inset-0 opacity-80" />
           <div className="relative z-10 max-w-2xl">
@@ -44,13 +61,12 @@ export default function CreatorDashboard() {
               Creator Dashboard
             </h1>
             <p className="mt-3 text-sm leading-7 text-muted-foreground md:text-base">
-              Welcome, {user?.name}. This is your control layer. Create strong
-              problems, maintain quality, and avoid dumping low-value content.
+              Welcome, {user?.name}. Your job is problem quality, not contest
+              control, not billing control, not admin control.
             </p>
           </div>
         </div>
 
-        {/* STATS */}
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           <div className="metric-card">
             <div className="flex items-center justify-between">
@@ -63,7 +79,7 @@ export default function CreatorDashboard() {
               My Problems
             </p>
             <p className="mt-2 text-3xl font-black">
-              {loading ? "-" : mine.length}
+              {loading ? "-" : problems.length}
             </p>
           </div>
 
@@ -98,27 +114,29 @@ export default function CreatorDashboard() {
           </div>
         </div>
 
-        {/* ACTIONS */}
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link to="/create-problem">
-            <Button className="rounded-xl flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Create Problem
-            </Button>
-          </Link>
+          <Button
+            className="rounded-xl hover:bg-primary/90"
+            onClick={() => navigate("/create-problem")}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Create Problem
+          </Button>
 
-          <Link to="/manage-problems">
-            <Button variant="outline" className="rounded-xl">
-              Manage Problems
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            className="rounded-xl hover:border-primary/30 hover:bg-primary/10 hover:text-foreground"
+            onClick={() => navigate("/manage-problems")}
+          >
+            Manage Problems
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
         </div>
 
-        {/* EMPTY / FEEDBACK */}
-        {!loading && mine.length === 0 && (
+        {!loading && problems.length === 0 && (
           <div className="mt-10 rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
             You haven’t created any problems yet. Start with one high-quality
-            problem instead of adding multiple weak ones.
+            problem instead of dumping low-value content.
           </div>
         )}
       </motion.div>

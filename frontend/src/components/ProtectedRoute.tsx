@@ -14,7 +14,7 @@ export default function ProtectedRoute({
   children,
   allowRoles,
 }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const location = useLocation();
 
   const getFallbackRoute = () => {
@@ -45,8 +45,8 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
   if (allowRoles?.length && !allowRoles.includes(user.role as Role)) {

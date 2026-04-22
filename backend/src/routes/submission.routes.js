@@ -1,61 +1,19 @@
 import express from "express";
+import { authMiddleware } from "../middleware/auth.middleware.js";
 import {
   createSubmissionController,
   getSubmissionByIdForUserController,
   listMySubmissionsController,
 } from "../controllers/submission.controller.js";
-import { authMiddleware } from "../middleware/auth.middleware.js";
-import { validate } from "../middleware/validate.middleware.js";
-import { createSubmissionSchema } from "../validations/submission.validation.js";
+import { getMySubmissionAnalyticsController } from "../controllers/submission.analytics.controller.js";
 
 const router = express.Router();
 
 router.use(authMiddleware);
 
-router.post("/", validate(createSubmissionSchema), createSubmissionController);
 router.get("/me", listMySubmissionsController);
+router.get("/analytics/me", getMySubmissionAnalyticsController);
 router.get("/:submissionId", getSubmissionByIdForUserController);
+router.post("/", createSubmissionController);
 
 export default router;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

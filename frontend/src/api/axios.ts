@@ -1,29 +1,30 @@
 import axios from "axios";
 
-const baseURL =
+const rawBaseUrl =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
 
+const normalizedBaseUrl = rawBaseUrl.endsWith("/api")
+  ? rawBaseUrl
+  : `${rawBaseUrl.replace(/\/+$/, "")}/api`;
+
 const API = axios.create({
-  baseURL,
+  baseURL: normalizedBaseUrl,
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// optional but useful: handle global errors cleanly
 API.interceptors.response.use(
   (response) => response,
   (error) => {
-    // basic normalization (don’t over-engineer)
     if (error.response) {
-      // server responded with error
-      return Promise.reject(error.response);
+      return Promise.reject(error);
     }
 
     if (error.request) {
-      // no response (network issue)
       return Promise.reject({
+        ...error,
         message: "Network error. Server not reachable.",
       });
     }

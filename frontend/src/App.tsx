@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastContainer } from "react-toastify";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SplashScreen from "@/components/SplashScreen";
@@ -33,8 +33,25 @@ import ManageContests from "@/pages/ManageContests";
 import CreateContest from "@/pages/CreateContest";
 import AdminUsers from "@/pages/AdminUsers";
 import AdminAuditLogs from "@/pages/AdminAuditLogs";
+import Pricing from "@/pages/Pricing";
+import ManageSubscriptions from "@/pages/ManageSubscriptions";
+import Leaderboard from "@/pages/Leaderboard";
+import ContestRanking from "@/pages/ContestRanking";
+import SubmissionAnalytics from "@/pages/SubmissionAnalytics";
+import AiMentor from "@/pages/AiMentor";
+import Bookmarks from "@/pages/Bookmarks";
+import AiChat from "@/pages/AiChat";
+import AdminSales from "@/pages/AdminSales";
+import AdminProblemReview from "@/pages/AdminProblemReview";
+import Roadmap from "@/pages/Roadmap";
 
 const queryClient = new QueryClient();
+
+type Role = "USER" | "CREATOR" | "ADMIN";
+
+function withProtection(children: ReactNode, allowRoles: Role[]) {
+  return <ProtectedRoute allowRoles={allowRoles}>{children}</ProtectedRoute>;
+}
 
 function AppShell() {
   const [showSplash, setShowSplash] = useState(true);
@@ -52,7 +69,6 @@ function AppShell() {
         <SplashScreen show={showSplash} />
 
         <Routes>
-          {/* public */}
           <Route path="/" element={<Index />} />
           <Route path="/home" element={<Navigate to="/" replace />} />
 
@@ -61,162 +77,158 @@ function AppShell() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
 
+          <Route path="/pricing" element={<Pricing />} />
+          <Route path="/upgrade" element={<Upgrade />} />
+
           <Route path="/problems" element={<Problems />} />
           <Route path="/problems/:slug" element={<ProblemDetails />} />
 
-          <Route path="/daily-question" element={<DailyQuestion />} />
-          <Route path="/upgrade" element={<Upgrade />} />
-
           <Route path="/contests" element={<Contests />} />
           <Route path="/contests/:contestId" element={<ContestDetails />} />
-
-          {/* user */}
           <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                <Dashboard />
-              </ProtectedRoute>
-            }
+            path="/contests/:contestId/ranking"
+            element={<ContestRanking />}
           />
 
+          <Route path="/daily-question" element={<DailyQuestion />} />
+          <Route path="/leaderboard" element={<Leaderboard />} />
+
+          <Route
+            path="/dashboard"
+            element={withProtection(
+              <Dashboard />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/roadmap"
+            element={withProtection(
+              <Roadmap />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
           <Route
             path="/profile"
-            element={
-              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                <Profile />
-              </ProtectedRoute>
-            }
+            element={withProtection(
+              <Profile />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/notifications"
+            element={withProtection(
+              <Notifications />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/bookmarks"
+            element={withProtection(
+              <Bookmarks />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/ai-chat"
+            element={withProtection(
+              <AiChat />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/submission-analytics"
+            element={withProtection(
+              <SubmissionAnalytics />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
+          />
+          <Route
+            path="/ai-mentor"
+            element={withProtection(
+              <AiMentor />,
+              ["USER", "CREATOR", "ADMIN"]
+            )}
           />
 
           <Route
             path="/billing"
-            element={
-              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                <Billing />
-              </ProtectedRoute>
-            }
+            element={withProtection(<Billing />, ["USER"])}
           />
 
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute allowRoles={["USER", "CREATOR", "ADMIN"]}>
-                <Notifications />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* creator */}
           <Route
             path="/creator-dashboard"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <CreatorDashboard />
-              </ProtectedRoute>
-            }
+            element={withProtection(
+              <CreatorDashboard />,
+              ["CREATOR", "ADMIN"]
+            )}
           />
-
           <Route
             path="/manage-problems"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <ManageProblems />
-              </ProtectedRoute>
-            }
+            element={withProtection(
+              <ManageProblems />,
+              ["CREATOR", "ADMIN"]
+            )}
           />
-
           <Route
             path="/create-problem"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <CreateProblemPage />
-              </ProtectedRoute>
-            }
+            element={withProtection(
+              <CreateProblemPage />,
+              ["CREATOR", "ADMIN"]
+            )}
           />
-
           <Route
             path="/create-problem/:problemId"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <CreateProblemPage />
-              </ProtectedRoute>
-            }
+            element={withProtection(
+              <CreateProblemPage />,
+              ["CREATOR", "ADMIN"]
+            )}
           />
 
-          <Route
-            path="/manage-contests"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <ManageContests />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/create-contest"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <CreateContest />
-              </ProtectedRoute>
-            }
-          />
-
-          <Route
-            path="/create-contest/:contestId"
-            element={
-              <ProtectedRoute allowRoles={["CREATOR", "ADMIN"]}>
-                <CreateContest />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* admin */}
           <Route
             path="/admin-dashboard"
-            element={
-              <ProtectedRoute allowRoles={["ADMIN"]}>
-                <AdminDashboard />
-              </ProtectedRoute>
-            }
+            element={withProtection(<AdminDashboard />, ["ADMIN"])}
           />
-
+          <Route
+            path="/admin-sales"
+            element={withProtection(<AdminSales />, ["ADMIN"])}
+          />
+          <Route
+            path="/admin-problem-review"
+            element={withProtection(<AdminProblemReview />, ["ADMIN"])}
+          />
           <Route
             path="/admin-exports"
-            element={
-              <ProtectedRoute allowRoles={["ADMIN"]}>
-                <AdminExports />
-              </ProtectedRoute>
-            }
+            element={withProtection(<AdminExports />, ["ADMIN"])}
           />
-
           <Route
             path="/admin-users"
-            element={
-              <ProtectedRoute allowRoles={["ADMIN"]}>
-                <AdminUsers />
-              </ProtectedRoute>
-            }
+            element={withProtection(<AdminUsers />, ["ADMIN"])}
           />
-
           <Route
             path="/admin-audit-logs"
-            element={
-              <ProtectedRoute allowRoles={["ADMIN"]}>
-                <AdminAuditLogs />
-              </ProtectedRoute>
-            }
+            element={withProtection(<AdminAuditLogs />, ["ADMIN"])}
+          />
+          <Route
+            path="/admin-subscriptions"
+            element={withProtection(<ManageSubscriptions />, ["ADMIN"])}
+          />
+          <Route
+            path="/manage-contests"
+            element={withProtection(<ManageContests />, ["ADMIN"])}
+          />
+          <Route
+            path="/create-contest"
+            element={withProtection(<CreateContest />, ["ADMIN"])}
+          />
+          <Route
+            path="/create-contest/:contestId"
+            element={withProtection(<CreateContest />, ["ADMIN"])}
           />
 
-          {/* fallback */}
           <Route path="*" element={<NotFound />} />
         </Routes>
 
-        <ToastContainer
-          position="top-right"
-          autoClose={2500}
-          theme="colored"
-        />
+        <ToastContainer position="top-right" autoClose={2000} theme="colored" />
       </BrowserRouter>
     </TooltipProvider>
   );

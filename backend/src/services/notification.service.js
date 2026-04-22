@@ -1,9 +1,95 @@
 import prisma from "../config/db.js";
+import { emitToUsers } from "../config/socket.js";
 import {
   enqueueContestReminderJob,
   enqueuePublishedProblemFanoutJob,
   enqueueDailyQuestionAssignmentJob,
 } from "../queues/notification.queue.js";
+import {
+  buildNotificationPayloadsForEventService,
+  NotificationAudience,
+} from "./notification.rules.service.js";
+
+const DEDUPE_WINDOW_MINUTES = 30;
+
+const getTargetUsersByAudienceService = async ({
+  audienceType,
+  targetUserId = null,
+}) => {
+  if (audienceType === NotificationAudience.USER_ID) {
+    if (!targetUserId) return [];
+
+    return prisma.user.findMany({
+      where: {
+        id: targetUserId,
+        isBlocked: false,
+      },
+      select: { id: true },
+    });
+  }
+
+  if (audienceType === NotificationAudience.USER) {
+    return prisma.user.findMany({
+      where: {
+        role: "USER",
+        isBlocked: false,
+      },
+      select: { id: true },
+    });
+  }
+
+  if (audienceType === NotificationAudience.CREATOR) {
+    return prisma.user.findMany({
+      where: {
+        role: "CREATOR",
+        isBlocked: false,
+      },
+      select: { id: true },
+    });
+  }
+
+  if (audienceType === NotificationAudience.ADMIN) {
+    return prisma.user.findMany({
+      where: {
+        role: "ADMIN",
+        isBlocked: false,
+      },
+      select: { id: true },
+    });
+  }
+
+  return [];
+};
+
+const isDuplicateNotificationService = async ({
+  userId,
+  type,
+  title,
+  data,
+}) => {
+  const since = new Date(Date.now() - DEDUPE_WINDOW_MINUTES * 60 * 1000);
+
+  const recent = await prisma.notification.findFirst({
+    where: {
+      userId,
+      type,
+      title,
+      createdAt: {
+        gte: since,
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  if (!recent) return false;
+
+  const oldData = JSON.stringify(recent.data || null);
+  const newData = JSON.stringify(data || null);
+
+  return oldData === newData;
+};
 
 export const createNotificationService = async ({
   userId,
@@ -11,8 +97,22 @@ export const createNotificationService = async ({
   title,
   message,
   data = null,
+  skipDedupe = false,
 }) => {
-  return prisma.notification.create({
+  if (!skipDedupe) {
+    const isDuplicate = await isDuplicateNotificationService({
+      userId,
+      type,
+      title,
+      data,
+    });
+
+    if (isDuplicate) {
+      return null;
+    }
+  }
+
+  const created = await prisma.notification.create({
     data: {
       userId,
       type,
@@ -21,7 +121,13 @@ export const createNotificationService = async ({
       data,
     },
   });
+
+  emitToUsers([userId], "notification:new", created);
+
+  return created;
 };
+
+export const createNotificationForUserService = createNotificationService;
 
 export const createBulkNotificationsForUsersService = async ({
   userIds,
@@ -29,22 +135,102 @@ export const createBulkNotificationsForUsersService = async ({
   title,
   message,
   data = null,
+  skipDedupe = false,
 }) => {
   if (!Array.isArray(userIds) || userIds.length === 0) {
     return { count: 0 };
   }
 
-  const rows = userIds.map((userId) => ({
-    userId,
-    type,
-    title,
-    message,
-    data,
-  }));
+  const uniqueUserIds = [...new Set(userIds.filter(Boolean))];
+  if (uniqueUserIds.length === 0) {
+    return { count: 0 };
+  }
 
-  return prisma.notification.createMany({
-    data: rows,
+  const createdNotifications = [];
+  const emittedUsers = [];
+
+  for (const userId of uniqueUserIds) {
+    const created = await createNotificationService({
+      userId,
+      type,
+      title,
+      message,
+      data,
+      skipDedupe,
+    });
+
+    if (created) {
+      createdNotifications.push(created);
+      emittedUsers.push(userId);
+    }
+  }
+
+  if (emittedUsers.length > 0) {
+    emitToUsers(emittedUsers, "notification:new", {
+      type,
+      title,
+      message,
+      data,
+      isRead: false,
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  return {
+    count: createdNotifications.length,
+    notifications: createdNotifications,
+  };
+};
+
+export const dispatchNotificationEventService = async ({
+  event,
+  actorUserId = null,
+  payload = {},
+}) => {
+  const rules = buildNotificationPayloadsForEventService({
+    event,
+    actorUserId,
+    payload,
   });
+
+  const createdNotifications = [];
+
+  for (const rule of rules) {
+    const targetUsers = await getTargetUsersByAudienceService({
+      audienceType: rule.audienceType,
+      targetUserId: rule.targetUserId || null,
+    });
+
+    const emittedUsers = [];
+
+    for (const target of targetUsers) {
+      const created = await createNotificationService({
+        userId: target.id,
+        type: rule.type,
+        title: rule.title,
+        message: rule.message,
+        data: rule.data || null,
+      });
+
+      if (created) {
+        createdNotifications.push(created);
+        emittedUsers.push(target.id);
+      }
+    }
+
+    if (emittedUsers.length > 0) {
+      emitToUsers(emittedUsers, "notification:new", {
+        type: rule.type,
+        title: rule.title,
+        message: rule.message,
+        data: rule.data || null,
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  return createdNotifications;
 };
 
 export const notifyPublishedProblemService = async ({
@@ -101,7 +287,7 @@ export const listMyNotificationsService = async (userId) => {
   return prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: 100,
   });
 };
 
@@ -125,6 +311,8 @@ export const getNotificationSummaryService = async (userId) => {
     totalCount,
   };
 };
+
+export const getMyNotificationSummaryService = getNotificationSummaryService;
 
 export const markNotificationReadService = async ({
   userId,
@@ -156,6 +344,8 @@ export const markNotificationReadService = async ({
   });
 };
 
+export const markMyNotificationReadService = markNotificationReadService;
+
 export const markAllNotificationsReadService = async (userId) => {
   await prisma.notification.updateMany({
     where: {
@@ -173,3 +363,5 @@ export const markAllNotificationsReadService = async (userId) => {
     message: "All notifications marked as read",
   };
 };
+
+export const markAllMyNotificationsReadService = markAllNotificationsReadService;

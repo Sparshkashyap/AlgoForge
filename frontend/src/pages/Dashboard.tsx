@@ -5,17 +5,23 @@ import {
   Flame,
   ShieldCheck,
   Sparkles,
-  Target,
   Trophy,
   ArrowRight,
   BookOpen,
   BrainCircuit,
+  Bookmark,
+  Bot,
+  Map,
+  BarChart3,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { useAuth } from "@/context/AuthContext";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import API from "@/api/axios";
+import AIChatBox from "@/components/AIChatBox";
 
 const fade = (delay = 0) => ({
   initial: { opacity: 0, y: 16 },
@@ -23,25 +29,24 @@ const fade = (delay = 0) => ({
   transition: { duration: 0.35, delay },
 });
 
-const statCards = [
-  {
-    key: "solvedCount",
-    label: "Problems Solved",
-    icon: Target,
-    accent: "text-primary",
-  },
-  {
-    key: "streak",
-    label: "Current Streak",
-    icon: Flame,
-    accent: "text-amber-400",
-  },
-];
-
 export default function Dashboard() {
   const { user } = useAuth();
+  const [analytics, setAnalytics] = useState<any>(null);
+  const [gamification, setGamification] = useState<any>(null);
 
   const role = String(user?.role ?? "USER");
+
+  useEffect(() => {
+    if (!user) return;
+
+    API.get("/submissions/analytics/me")
+      .then((res) => setAnalytics(res.data.data))
+      .catch(() => {});
+
+    API.get("/gamification/me")
+      .then((res) => setGamification(res.data.data))
+      .catch(() => {});
+  }, [user]);
 
   if (role === "ADMIN") {
     return <Navigate to="/admin-dashboard" replace />;
@@ -60,7 +65,6 @@ export default function Dashboard() {
       <Navbar />
 
       <div className="container py-8 md:py-10">
-        {/* HERO */}
         <motion.div
           className="spotlight-card overflow-hidden p-6 md:p-8"
           {...fade()}
@@ -83,8 +87,8 @@ export default function Dashboard() {
               </h1>
 
               <p className="mt-4 max-w-2xl text-sm leading-8 text-muted-foreground md:text-base">
-                This is your command center for solving, tracking progress, and
-                keeping your practice consistent. Less noise. Better momentum.
+                Your home base should expose real product depth: roadmap,
+                analytics, AI help, bookmarks, contests, and progress signal.
               </p>
 
               <div className="mt-5 flex flex-wrap items-center gap-2">
@@ -100,13 +104,13 @@ export default function Dashboard() {
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 xl:min-w-[280px]">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2 xl:min-w-[380px]">
               <div className="metric-card">
                 <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
                   Problems solved
                 </p>
                 <p className="mt-3 font-heading text-4xl font-black">
-                  {user?.solvedCount ?? 0}
+                  {gamification?.solvedCount ?? user?.solvedCount ?? 0}
                 </p>
               </div>
 
@@ -115,49 +119,35 @@ export default function Dashboard() {
                   Streak
                 </p>
                 <p className="mt-3 font-heading text-4xl font-black">
-                  {user?.streak ?? 0}d
+                  {gamification?.streak ?? user?.streak ?? 0}d
+                </p>
+              </div>
+
+              <div className="metric-card">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Accepted
+                </p>
+                <p className="mt-3 font-heading text-4xl font-black">
+                  {analytics?.totals?.accepted ?? 0}
+                </p>
+              </div>
+
+              <div className="metric-card">
+                <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">
+                  Next milestone
+                </p>
+                <p className="mt-3 font-heading text-4xl font-black">
+                  {gamification?.nextMilestone ?? "-"}
                 </p>
               </div>
             </div>
           </div>
         </motion.div>
 
-        {/* STATS */}
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          {statCards.map((card, index) => {
-            const Icon = card.icon;
-            const value =
-              card.key === "solvedCount"
-                ? user?.solvedCount ?? 0
-                : `${user?.streak ?? 0} days`;
-
-            return (
-              <motion.div
-                key={card.key}
-                className="rounded-[1.8rem] border border-border/70 bg-card/80 p-6 backdrop-blur-xl"
-                {...fade(index * 0.08)}
-              >
-                <div className="flex items-center justify-between">
-                  <Icon className={`h-5 w-5 ${card.accent}`} />
-                  <Sparkles className="h-4 w-4 text-muted-foreground" />
-                </div>
-
-                <div className="mt-4 font-heading text-3xl font-black">
-                  {value}
-                </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {card.label}
-                </p>
-              </motion.div>
-            );
-          })}
-        </div>
-
-        {/* MAIN GRID */}
-        <div className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="mt-6 grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
           <motion.div
             className="rounded-[1.8rem] border border-border/70 bg-card/80 p-6 backdrop-blur-xl"
-            {...fade(0.15)}
+            {...fade(0.12)}
           >
             <div className="mb-4 flex items-center gap-2">
               <Trophy className="h-5 w-5 text-accent" />
@@ -173,29 +163,29 @@ export default function Dashboard() {
                   <p className="font-medium">Problem bank is live</p>
                 </div>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Browse and read problems freely, then solve the ones that match
-                  your current prep target.
-                </p>
-              </div>
-
-              <div className="rounded-[1.3rem] border border-border/70 bg-background/55 p-4">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-primary" />
-                  <p className="font-medium">Submissions stay protected</p>
-                </div>
-                <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Reading is open. Real attempts and progress stay tied to your
-                  authenticated account.
+                  Browse, bookmark, solve, discuss, and keep notes instead of
+                  treating problem pages as dumb text pages.
                 </p>
               </div>
 
               <div className="rounded-[1.3rem] border border-border/70 bg-background/55 p-4">
                 <div className="flex items-center gap-2">
                   <BrainCircuit className="h-4 w-4 text-primary" />
-                  <p className="font-medium">Use AI only when it helps thinking</p>
+                  <p className="font-medium">AI should support thinking</p>
                 </div>
                 <p className="mt-2 text-sm leading-7 text-muted-foreground">
-                  Hints and reviews should move you forward, not become a crutch.
+                  Use AI mentor and AI chat for explanation and direction, not
+                  to bypass the work.
+                </p>
+              </div>
+
+              <div className="rounded-[1.3rem] border border-border/70 bg-background/55 p-4">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4 text-primary" />
+                  <p className="font-medium">Track your actual signal</p>
+                </div>
+                <p className="mt-2 text-sm leading-7 text-muted-foreground">
+                  Analytics and streaks matter more than random problem count.
                 </p>
               </div>
             </div>
@@ -203,16 +193,14 @@ export default function Dashboard() {
 
           <motion.div
             className="rounded-[1.8rem] border border-border/70 bg-card/80 p-6 backdrop-blur-xl"
-            {...fade(0.22)}
+            {...fade(0.2)}
           >
             <div className="mb-4 flex items-center gap-2">
               <CalendarClock className="h-5 w-5 text-primary" />
-              <h2 className="font-heading text-xl font-bold">
-                Quick actions
-              </h2>
+              <h2 className="font-heading text-xl font-bold">Quick actions</h2>
             </div>
 
-            <div className="space-y-3">
+            <div className="grid gap-3">
               <Link to="/problems">
                 <Button className="w-full rounded-xl border-0 bg-primary text-primary-foreground">
                   Open Problems
@@ -228,20 +216,39 @@ export default function Dashboard() {
 
               <Link to="/bookmarks">
                 <Button variant="outline" className="w-full rounded-xl">
+                  <Bookmark className="mr-2 h-4 w-4" />
                   View Bookmarks
                 </Button>
               </Link>
 
-              <Link to="/profile">
+              <Link to="/roadmap">
                 <Button variant="outline" className="w-full rounded-xl">
-                  Manage Profile
+                  <Map className="mr-2 h-4 w-4" />
+                  Learning Roadmap
+                </Button>
+              </Link>
+
+              <Link to="/submission-analytics">
+                <Button variant="outline" className="w-full rounded-xl">
+                  <BarChart3 className="mr-2 h-4 w-4" />
+                  Submission Analytics
+                </Button>
+              </Link>
+
+              <Link to="/ai-chat">
+                <Button variant="outline" className="w-full rounded-xl">
+                  <Bot className="mr-2 h-4 w-4" />
+                  AI Chat
                 </Button>
               </Link>
             </div>
           </motion.div>
         </div>
 
-        {/* BOTTOM NOTE */}
+        <motion.div className="mt-6" {...fade(0.26)}>
+          <AIChatBox />
+        </motion.div>
+
         <motion.div
           className="mt-6 rounded-[1.8rem] border border-border/70 bg-card/75 p-6 backdrop-blur-xl"
           {...fade(0.28)}
@@ -252,8 +259,8 @@ export default function Dashboard() {
           </div>
 
           <p className="mt-4 text-sm leading-8 text-muted-foreground">
-            Don’t chase random difficulty for the sake of ego. Build consistent
-            reps, review mistakes properly, and let momentum compound.
+            Random hustle is not progress. Use the roadmap, review wrong answers,
+            bookmark hard problems, and use the analytics page to spot patterns.
           </p>
         </motion.div>
       </div>

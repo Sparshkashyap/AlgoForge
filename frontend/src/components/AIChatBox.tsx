@@ -1,86 +1,115 @@
-import { Clock, Trophy, Users, ArrowRight } from "lucide-react";
+import { useState } from "react";
+import { MessageSquareText, SendHorizontal, Sparkles } from "lucide-react";
+import { toast } from "react-toastify";
+
+import { askAiAssistantApi } from "@/api/ai.api";
 import { Button } from "@/components/ui/button";
 
-type Contest = {
-  id: string | number;
-  title: string;
-  startTime: string;
-  durationMinutes: number;
-  participants?: number;
-  isLive?: boolean;
+type Message = {
+  role: "user" | "assistant";
+  content: string;
 };
 
-export default function ContestCard({
-  contest,
-  onJoin,
-}: {
-  contest: Contest;
-  onJoin?: () => void;
-}) {
-  const start = new Date(contest.startTime);
+export default function AIChatBox() {
+  const [question, setQuestion] = useState("");
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "assistant",
+      content:
+        "Bhai, jo bhi poochna hai pooch. Main AlgoForge context ke hisaab se role-aware Hinglish me help karunga.",
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
 
-  const formatTime = () => {
-    return start.toLocaleString();
-  };
+  const handleAsk = async () => {
+    const trimmedQuestion = question.trim();
+    if (!trimmedQuestion || loading) return;
 
-  const formatDuration = () => {
-    const hrs = Math.floor(contest.durationMinutes / 60);
-    const mins = contest.durationMinutes % 60;
-    return `${hrs > 0 ? `${hrs}h ` : ""}${mins}m`;
+    const nextUserMessage: Message = {
+      role: "user",
+      content: trimmedQuestion,
+    };
+
+    setMessages((prev) => [...prev, nextUserMessage]);
+    setQuestion("");
+
+    try {
+      setLoading(true);
+
+      const response = await askAiAssistantApi(trimmedQuestion);
+      const answer = response?.data?.answer || "No answer generated";
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: answer,
+        },
+      ]);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message || error?.message || "AI chat failed"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-card/85 p-6 backdrop-blur-xl transition hover:-translate-y-1 hover:border-primary/30">
-
-      {contest.isLive && (
-        <div className="absolute top-4 right-4 flex items-center gap-2 rounded-full bg-red-500/10 px-3 py-1 text-xs font-semibold text-red-400 border border-red-500/20">
-          <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
-          Live
-        </div>
-      )}
-
-      <div className="flex items-start gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] border border-primary/20 bg-primary/10 text-primary">
-          <Trophy className="h-5 w-5" />
+    <div className="rounded-[1.8rem] border border-border/70 bg-card/70 p-5 backdrop-blur-xl">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+          <MessageSquareText className="h-4 w-4" />
         </div>
 
-        <div className="flex-1">
-          <h3 className="font-heading text-xl font-bold leading-tight">
-            {contest.title}
-          </h3>
-
-          <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              {formatTime()}
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Duration: {formatDuration()}
-            </div>
-
-            {contest.participants !== undefined && (
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                {contest.participants} participants
-              </div>
-            )}
-          </div>
+        <div>
+          <p className="text-sm font-semibold">AI Chat</p>
+          <p className="text-xs text-muted-foreground">
+            Platform-aware Hinglish assistant
+          </p>
         </div>
       </div>
 
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <div className="text-xs uppercase tracking-[0.14em] text-muted-foreground">
-          {contest.isLive ? "Ongoing Contest" : "Upcoming"}
-        </div>
+      <div className="mt-5 max-h-[380px] space-y-3 overflow-y-auto rounded-2xl border border-border/70 bg-background/40 p-4">
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm leading-7 ${
+              message.role === "user"
+                ? "ml-auto bg-primary text-primary-foreground"
+                : "border border-border/70 bg-card text-foreground"
+            }`}
+          >
+            {message.content}
+          </div>
+        ))}
+
+        {loading && (
+          <div className="max-w-[90%] rounded-2xl border border-border/70 bg-card px-4 py-3 text-sm text-muted-foreground">
+            Thinking with context...
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex gap-3">
+        <textarea
+          className="min-h-[88px] flex-1 rounded-2xl border border-border/70 bg-background/50 p-3 text-sm outline-none"
+          placeholder="Ask about roadmap, weak areas, creator quality, admin insights, contests, billing..."
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+        />
 
         <Button
-          onClick={onJoin}
-          className="rounded-xl h-10 px-4 text-sm font-semibold"
+          type="button"
+          onClick={handleAsk}
+          disabled={loading || !question.trim()}
+          className="h-auto rounded-2xl px-5"
         >
-          {contest.isLive ? "Join Now" : "Register"}
-          <ArrowRight className="ml-2 h-4 w-4" />
+          {loading ? (
+            <Sparkles className="h-4 w-4 animate-pulse" />
+          ) : (
+            <SendHorizontal className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </div>

@@ -1,13 +1,17 @@
-import { useEffect, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, NavLink, useNavigate } from "react-router-dom";
 import {
   LogOut,
   Menu,
   Settings,
   Sparkles,
   UserCircle2,
+  Bot,
+  LayoutDashboard,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { toast } from "react-toastify";
+
 import { BrandLogo } from "@/components/BrandLogo";
 import { ModeToggle } from "@/components/ModeToggle";
 import { Button } from "@/components/ui/button";
@@ -15,14 +19,6 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useAuth } from "@/context/AuthContext";
 import { UserNav } from "@/components/UserNav";
 import NotificationBell from "@/components/NotificationBell";
-import { toast } from "react-toastify";
-
-const navItems = [
-  { label: "Home", to: "/" },
-  { label: "Problems", to: "/problems" },
-  { label: "Pricing", to: "/upgrade" },
-  { label: "Contests", to: "/contests" },
-];
 
 function NavLinkText({ label }: { label: string }) {
   return (
@@ -37,7 +33,9 @@ function NavLinkText({ label }: { label: string }) {
 
 export function Navbar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -48,13 +46,55 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  const actionLink = isAuthenticated ? "/dashboard" : "/signup";
-  const actionLabel = isAuthenticated ? "Open App" : "Start Forging";
+  const navItems = useMemo(() => {
+    if (!isAuthenticated) {
+      return [
+        { label: "Home", to: "/" },
+        { label: "Problems", to: "/problems" },
+        { label: "Contests", to: "/contests" },
+        { label: "Roadmap", to: "/roadmap" },
+        { label: "Pricing", to: "/upgrade" },
+      ];
+    }
+
+    if (user?.role === "ADMIN") {
+      return [
+        { label: "Problems", to: "/problems" },
+        { label: "Contests", to: "/contests" },
+        { label: "Admin", to: "/admin-dashboard" },
+        { label: "AI Chat", to: "/ai-chat" },
+      ];
+    }
+
+    if (user?.role === "CREATOR") {
+      return [
+        { label: "Problems", to: "/problems" },
+        { label: "Contests", to: "/contests" },
+        { label: "Creator", to: "/creator-dashboard" },
+        { label: "AI Chat", to: "/ai-chat" },
+      ];
+    }
+
+    return [
+      { label: "Problems", to: "/problems" },
+      { label: "Contests", to: "/contests" },
+      { label: "Roadmap", to: "/roadmap" },
+      { label: "Analytics", to: "/submission-analytics" },
+    ];
+  }, [isAuthenticated, user?.role]);
+
+  const dashboardHref =
+    user?.role === "ADMIN"
+      ? "/admin-dashboard"
+      : user?.role === "CREATOR"
+      ? "/creator-dashboard"
+      : "/dashboard";
 
   const handleLogout = async () => {
     try {
       await logout();
       toast.success("Logged out successfully");
+      navigate("/");
       setOpen(false);
     } catch {
       toast.error("Logout failed");
@@ -75,7 +115,8 @@ export function Navbar() {
           <BrandLogo />
         </Link>
 
-        <nav className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/65 p-2 shadow-[0_12px_30px_rgba(0,0,0,0.08)] md:flex">
+        {/* Desktop nav */}
+        <nav className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/65 p-2 shadow md:flex">
           {navItems.map((item) => {
             const active = location.pathname === item.to;
 
@@ -83,160 +124,119 @@ export function Navbar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className="group relative rounded-full px-5 py-2.5 text-[1rem] font-semibold tracking-tight text-muted-foreground transition-colors hover:text-foreground"
+                className="group relative rounded-full px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
               >
                 {active && (
                   <motion.span
                     layoutId="nav-pill"
                     className="absolute inset-0 rounded-full bg-primary/12"
-                    transition={{ type: "spring", stiffness: 360, damping: 30 }}
                   />
                 )}
 
-                <span
-                  className={`relative z-10 ${active ? "text-foreground" : ""}`}
-                >
+                <span className={`relative z-10 ${active ? "text-foreground" : ""}`}>
                   <NavLinkText label={item.label} />
                 </span>
-
-                <span
-                  className={`nav-underline-flow absolute bottom-[6px] left-1/2 h-[2px] -translate-x-1/2 rounded-full ${
-                    active ? "w-[56%] opacity-100" : "w-0 opacity-0"
-                  }`}
-                />
               </Link>
             );
           })}
         </nav>
 
+        {/* Desktop right */}
         <div className="hidden items-center gap-3 md:flex">
           <ModeToggle />
 
           {isAuthenticated ? (
             <>
               <NotificationBell />
+
+              <Link to="/ai-chat">
+                <Button variant="outline" className="rounded-full">
+                  <Bot className="mr-2 h-4 w-4" />
+                  AI
+                </Button>
+              </Link>
+
+              <Link to={dashboardHref}>
+                <Button variant="outline" className="rounded-full">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </Button>
+              </Link>
+
               <UserNav />
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button
-                  variant="ghost"
-                  className="navbar-ghost-btn rounded-full px-5 text-[0.98rem] font-semibold"
-                >
-                  <span className="relative z-10">Sign In</span>
+                <Button variant="ghost" className="rounded-full">
+                  Sign In
                 </Button>
               </Link>
 
-              <Link to={actionLink}>
-                <Button className="navbar-cta-btn group rounded-full px-5 text-[0.98rem] font-semibold shadow-[0_14px_44px_rgba(100,90,255,0.22)]">
-                  <span className="relative z-10 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4" />
-                    {actionLabel}
-                  </span>
+              <Link to="/signup">
+                <Button className="rounded-full">
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  Start Forging
                 </Button>
               </Link>
             </>
           )}
         </div>
 
+        {/* Mobile */}
         <div className="flex items-center gap-2 md:hidden">
           <ModeToggle />
-          {isAuthenticated ? <NotificationBell /> : null}
+          {isAuthenticated && <NotificationBell />}
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                className="rounded-full border-border/70 bg-card/80"
-              >
+              <Button variant="outline" size="icon" className="rounded-full">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
 
-            <SheetContent
-              side="right"
-              className="w-[86vw] border-l border-border/70 bg-background/96 backdrop-blur-2xl"
-            >
-              <div className="mt-8 flex flex-col gap-3">
-                <div className="mb-2">
-                  <BrandLogo />
-                </div>
-
-                {isAuthenticated && user ? (
-                  <div className="mb-2 rounded-2xl border border-border/70 bg-card/60 p-4">
-                    <p className="font-semibold text-foreground">{user.name}</p>
-                    <p className="mt-1 break-all text-sm text-muted-foreground">
-                      {user.email}
-                    </p>
-                  </div>
-                ) : null}
+            <SheetContent side="right" className="w-[86vw]">
+              <div className="mt-6 flex flex-col gap-3">
+                <BrandLogo />
 
                 {navItems.map((item) => (
-                  <Link
+                  <NavLink
                     key={item.to}
                     to={item.to}
                     onClick={() => setOpen(false)}
-                    className={`rounded-2xl border px-4 py-3 text-sm font-medium transition ${
-                      location.pathname === item.to
-                        ? "border-primary/30 bg-primary/10 text-foreground"
-                        : "border-border/70 bg-card/60 text-muted-foreground hover:text-foreground"
-                    }`}
+                    className="rounded-xl px-4 py-3 text-sm"
                   >
                     {item.label}
-                  </Link>
+                  </NavLink>
                 ))}
 
                 {isAuthenticated ? (
                   <>
-                    <Link
-                      to="/profile"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/60 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                    >
-                      <UserCircle2 className="h-4 w-4" />
-                      View Profile
-                    </Link>
+                    <NavLink to="/ai-chat" onClick={() => setOpen(false)}>
+                      AI Chat
+                    </NavLink>
 
-                    <Link
-                      to="/profile"
-                      onClick={() => setOpen(false)}
-                      className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card/60 px-4 py-3 text-sm font-medium text-muted-foreground transition hover:text-foreground"
-                    >
-                      <Settings className="h-4 w-4" />
-                      Settings
-                    </Link>
+                    <NavLink to={dashboardHref} onClick={() => setOpen(false)}>
+                      Dashboard
+                    </NavLink>
 
-                    <div className="mt-2">
-                      <UserNav />
-                    </div>
+                    <NavLink to="/profile" onClick={() => setOpen(false)}>
+                      Profile
+                    </NavLink>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleLogout}
-                      className="justify-start rounded-2xl border-border/70 bg-card/60 px-4 py-3 text-sm font-medium text-destructive"
-                    >
-                      <LogOut className="mr-3 h-4 w-4" />
+                    <Button onClick={handleLogout} variant="outline">
+                      <LogOut className="mr-2 h-4 w-4" />
                       Logout
                     </Button>
                   </>
                 ) : (
                   <>
                     <Link to="/login" onClick={() => setOpen(false)}>
-                      <Button
-                        variant="outline"
-                        className="mt-2 w-full rounded-2xl"
-                      >
-                        Sign In
-                      </Button>
+                      <Button variant="outline">Login</Button>
                     </Link>
 
-                    <Link to={actionLink} onClick={() => setOpen(false)}>
-                      <Button className="w-full rounded-2xl">
-                        {actionLabel}
-                      </Button>
+                    <Link to="/signup" onClick={() => setOpen(false)}>
+                      <Button>Sign Up</Button>
                     </Link>
                   </>
                 )}

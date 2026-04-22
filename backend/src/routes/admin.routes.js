@@ -2,11 +2,15 @@ import express from "express";
 import {
   blockUserController,
   getAdminDashboardSummaryController,
+  getPricingCatalogController,
   listAuditLogsController,
   listUsersForAdminController,
   unblockUserController,
+  updatePricingCatalogController,
   updateUserRoleController,
 } from "../controllers/admin.controller.js";
+import { getRevenueAnalyticsController } from "../controllers/admin.analytics.controller.js";
+import { getSalesChartController } from "../controllers/admin.sales.controller.js";
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminMiddleware } from "../middleware/admin.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
@@ -20,11 +24,12 @@ const router = express.Router();
 
 router.use(authMiddleware, adminMiddleware);
 
-// summary
 router.get("/summary", getAdminDashboardSummaryController);
 
-// users
 router.get("/users", listUsersForAdminController);
+
+router.get("/analytics/revenue", getRevenueAnalyticsController);
+router.get("/analytics/sales-chart", getSalesChartController);
 
 router.patch(
   "/users/:userId/role",
@@ -44,7 +49,9 @@ router.patch(
   unblockUserController
 );
 
-// audit
 router.get("/audit-logs", listAuditLogsController);
+
+router.get("/pricing", getPricingCatalogController);
+router.put("/pricing", updatePricingCatalogController);
 
 export default router;

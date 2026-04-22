@@ -3,6 +3,21 @@ import {
   createSubscriptionCheckoutService,
   getMyBillingService,
 } from "../services/billing.service.js";
+import { getVisiblePricingPlansForRoleService } from "../services/plan.service.js";
+
+export const getPublicPricingPlansController = async (req, res, next) => {
+  try {
+    const role = req.user?.role || "USER";
+    const data = await getVisiblePricingPlansForRoleService(role);
+
+    return res.status(200).json({
+      success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const createSubscriptionCheckoutController = async (req, res, next) => {
   try {

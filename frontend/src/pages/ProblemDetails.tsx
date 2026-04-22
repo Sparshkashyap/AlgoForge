@@ -20,6 +20,12 @@ import { fireCenterConfetti } from "@/components/ConfettiBurst";
 import ProblemWorkspace from "@/components/ProblemWorkspace";
 import { useSubmission } from "@/hooks/useSubmission";
 
+import ProblemDiscussions from "@/components/ProblemDiscussions";
+import ProblemNotes from "@/components/ProblemNotes";
+
+import { toggleBookmarkApi } from "@/api/bookmark.api";
+import { Button } from "@/components/ui/button";
+
 type SupportedLanguage = "javascript" | "python" | "cpp" | "java" | "c";
 
 const LANGUAGES: SupportedLanguage[] = [
@@ -40,7 +46,7 @@ const EMPTY_CODE_BY_LANGUAGE: Record<SupportedLanguage, string> = {
 
 const getLanguageTemplate = (
   problem: Problem | null,
-  language: SupportedLanguage
+  language: SupportedLanguage,
 ) => {
   if (!problem) return "// Write your solution here";
 
@@ -64,13 +70,13 @@ function formatTimer(totalSeconds: number) {
   if (hours > 0) {
     return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(
       2,
-      "0"
+      "0",
     )}:${String(seconds).padStart(2, "0")}`;
   }
 
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(
     2,
-    "0"
+    "0",
   )}`;
 }
 
@@ -92,16 +98,17 @@ export default function ProblemDetails() {
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
-  const [codeByLanguage, setCodeByLanguage] =
-    useState<Record<SupportedLanguage, string>>(EMPTY_CODE_BY_LANGUAGE);
+  const [codeByLanguage, setCodeByLanguage] = useState<
+    Record<SupportedLanguage, string>
+  >(EMPTY_CODE_BY_LANGUAGE);
 
   const [runResult, setRunResult] = useState<Submission | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
   const [queuedSubmissionId, setQueuedSubmissionId] = useState<string | null>(
-    null
+    null,
   );
   const [previousSubmissions, setPreviousSubmissions] = useState<Submission[]>(
-    []
+    [],
   );
 
   const [loading, setLoading] = useState(true);
@@ -150,22 +157,24 @@ export default function ProblemDetails() {
         const nextProblem = data.data as Problem;
         setProblem(nextProblem);
 
-        const nextCodeByLanguage = LANGUAGES.reduce((acc, currentLanguage) => {
-          const draftKey = `algoforge:draft:${nextProblem.id}:${currentLanguage}`;
-          const existingDraft = localStorage.getItem(draftKey);
+        const nextCodeByLanguage = LANGUAGES.reduce(
+          (acc, currentLanguage) => {
+            const draftKey = `algoforge:draft:${nextProblem.id}:${currentLanguage}`;
+            const existingDraft = localStorage.getItem(draftKey);
 
-          acc[currentLanguage] =
-            existingDraft ?? getLanguageTemplate(nextProblem, currentLanguage);
+            acc[currentLanguage] =
+              existingDraft ??
+              getLanguageTemplate(nextProblem, currentLanguage);
 
-          return acc;
-        }, {} as Record<SupportedLanguage, string>);
+            return acc;
+          },
+          {} as Record<SupportedLanguage, string>,
+        );
 
         setCodeByLanguage(nextCodeByLanguage);
       })
       .catch((error: any) => {
-        toast.error(
-          error?.response?.data?.message || "Failed to load problem"
-        );
+        toast.error(error?.response?.data?.message || "Failed to load problem");
       })
       .finally(() => setLoading(false));
   }, [slug]);
@@ -176,7 +185,7 @@ export default function ProblemDetails() {
     getMySubmissionsApi()
       .then((data) => {
         const filtered = (data.data || []).filter(
-          (item: Submission) => item.problem?.slug === slug
+          (item: Submission) => item.problem?.slug === slug,
         );
         setPreviousSubmissions(filtered);
       })
@@ -204,7 +213,7 @@ export default function ProblemDetails() {
       getMySubmissionsApi()
         .then((data) => {
           const filtered = (data.data || []).filter(
-            (item: Submission) => item.problem?.slug === slug
+            (item: Submission) => item.problem?.slug === slug,
           );
           setPreviousSubmissions(filtered);
         })
@@ -224,8 +233,7 @@ export default function ProblemDetails() {
       setRunning(true);
 
       const visibleCase =
-        problem.testCases?.find((tc) => !tc.isHidden) ||
-        problem.testCases?.[0];
+        problem.testCases?.find((tc) => !tc.isHidden) || problem.testCases?.[0];
 
       const data = await runProblemApi(problem.id, {
         language,
@@ -323,7 +331,7 @@ export default function ProblemDetails() {
       if (problem) {
         localStorage.setItem(
           `algoforge:draft:${problem.id}:${language}`,
-          nextCode
+          nextCode,
         );
       }
 
@@ -356,6 +364,34 @@ export default function ProblemDetails() {
       </div>
     );
   }
+
+
+
+
+const toggleBookmark = async () => {
+  if (!problem?.id) return;
+
+  if (!user) {
+    navigate("/login", {
+      state: { from: location.pathname },
+    });
+    return;
+  }
+
+  try {
+    const res = await toggleBookmarkApi(problem.id);
+
+    toast.success(
+      res.data?.bookmarked
+        ? "Added to bookmarks"
+        : "Removed from bookmarks"
+    );
+  } catch (error: any) {
+    toast.error(
+      error?.response?.data?.message || "Failed to update bookmark"
+    );
+  }
+};
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -415,10 +451,16 @@ export default function ProblemDetails() {
                     {problem.title}
                   </h1>
 
+                  <div className="mt-4">
+                    <Button className="rounded-xl" onClick={toggleBookmark}>
+                      Bookmark
+                    </Button>
+                  </div>
+
                   <p className="mt-3 max-w-3xl text-sm leading-8 text-muted-foreground md:text-base">
-                    Work through the prompt, use the workspace properly, and keep
-                    your progress visible. This page should feel like the core of
-                    the platform, not an afterthought around the editor.
+                    Work through the prompt, use the workspace properly, and
+                    keep your progress visible. This page should feel like the
+                    core of the platform, not an afterthought around the editor.
                   </p>
                 </div>
 
@@ -484,8 +526,8 @@ export default function ProblemDetails() {
               <div>
                 <p className="font-semibold">Premium problem locked</p>
                 <p className="mt-1 text-yellow-200/80">
-                  You can view the shell, but running and submitting this problem
-                  requires premium access.
+                  You can view the shell, but running and submitting this
+                  problem requires premium access.
                 </p>
               </div>
             </div>
@@ -512,6 +554,11 @@ export default function ProblemDetails() {
           previousSubmissions={previousSubmissions}
           userExists={!!user}
         />
+
+        <div className="mt-8 grid gap-6 xl:grid-cols-2">
+  {problem?.id && <ProblemNotes problemId={problem.id} />}
+  {problem?.id && <ProblemDiscussions problemId={problem.id} />}
+</div>
       </motion.div>
     </div>
   );
