@@ -12,6 +12,43 @@ import {
   getMyBadgesListService,
 } from "../services/user.service.js";
 
+import { getMyHeatmapService } from "../services/heatmap.service.js";
+import { getMyGamificationSummaryService } from "../services/gamification.service.js";
+
+/* ================= DASHBOARD (NEW) ================= */
+
+export const getMyDashboardController = async (req, res, next) => {
+  try {
+    const userId = req.user.userId;
+
+    const stats = await getMySolveStatsService(userId);
+    const heatmap = await getMyHeatmapService(userId);
+    const gamification = await getMyGamificationSummaryService(userId);
+
+    // 🔥 MOCK RECOMMENDATION (replace later with AI)
+    const recommendations = [
+      { _id: 1, title: "Binary Search Basics", difficulty: "Easy" },
+      { _id: 2, title: "DP Knapsack", difficulty: "Medium" },
+      { _id: 3, title: "Graph Shortest Path", difficulty: "Hard" },
+    ];
+
+    return res.json({
+      success: true,
+      data: {
+        stats,
+        heatmap,
+        gamification,
+        recentActivity: stats.recentSubmissions || [],
+        recommendations,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= EXISTING ================= */
+
 export const getMyProfileController = async (req, res, next) => {
   try {
     const data = await getMyProfileService(req.user.userId);

@@ -15,10 +15,13 @@ import {
   getMyBadgesController,
   updateUserAvatarController,
   updateUserAvatarByAdminController,
+  getMyDashboardController, // ✅ NEW
 } from "../controllers/user.controller.js";
+
 import { authMiddleware } from "../middleware/auth.middleware.js";
 import { adminMiddleware } from "../middleware/admin.middleware.js";
 import { validate } from "../middleware/validate.middleware.js";
+import { upload } from "../middleware/upload.middleware.js";
 import { getMyGamificationSummaryController } from "../controllers/gamification.controller.js";
 import { getMyHeatmapController } from "../controllers/heatmap.controller.js";
 
@@ -34,18 +37,21 @@ const notificationIdParamSchema = z.object({
 
 router.use(authMiddleware);
 
-// profile
+/* 🔥 NEW DASHBOARD */
+router.get("/dashboard", getMyDashboardController);
+
+/* profile */
 router.get("/me", getMyProfileController ?? getMeController);
 router.put("/me", updateMyProfileController ?? updateMeController);
 router.patch("/me", updateMeController ?? updateMyProfileController);
-router.post("/avatar", uploadAvatarController);
+router.post("/avatar", upload.single("avatar"), uploadAvatarController);
 router.delete("/me/avatar", removeMyAvatarController);
 
-// stats / badges
+/* stats / badges */
 router.get("/stats", getMySolveStatsController);
 router.get("/badges", getMyBadgesController);
 
-// notifications
+/* notifications */
 router.get("/notifications", getMyNotificationsController);
 router.get("/notifications/summary", getMyNotificationSummaryController);
 router.patch(
@@ -55,13 +61,13 @@ router.patch(
 );
 router.patch("/notifications/read-all", readAllMyNotificationsController);
 
-// gamification
+/* gamification */
 router.get("/gamification/me", getMyGamificationSummaryController);
 
-// heatmap
+/* heatmap */
 router.get("/heatmap/me", getMyHeatmapController);
 
-// admin avatar control for other users
+/* admin avatar control */
 router.patch(
   "/admin/:userId/avatar",
   adminMiddleware,

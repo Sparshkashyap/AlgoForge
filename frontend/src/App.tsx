@@ -6,7 +6,9 @@ import { useEffect, useState, type ReactNode } from "react";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SplashScreen from "@/components/SplashScreen";
+import AIChatBox from "@/components/AIChatBox";
 import { useRealtimeUserChannel } from "@/hooks/useRealtimeUserChannel";
+import { useAuth } from "@/context/AuthContext";
 
 import Index from "@/pages/Index";
 import Dashboard from "@/pages/Dashboard";
@@ -51,6 +53,14 @@ type Role = "USER" | "CREATOR" | "ADMIN";
 
 function withProtection(children: ReactNode, allowRoles: Role[]) {
   return <ProtectedRoute allowRoles={allowRoles}>{children}</ProtectedRoute>;
+}
+
+function FloatingAiLayer() {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading || !isAuthenticated) return null;
+
+  return <AIChatBox />;
 }
 
 function AppShell() {
@@ -227,6 +237,8 @@ function AppShell() {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+
+        <FloatingAiLayer />
 
         <ToastContainer position="top-right" autoClose={2000} theme="colored" />
       </BrowserRouter>

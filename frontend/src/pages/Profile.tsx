@@ -11,12 +11,10 @@ import { toast } from "react-toastify";
 import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  getMyProfileApi,
-  updateMyProfileApi,
-} from "@/api/user.api";
+import { getMyProfileApi, updateMyProfileApi } from "@/api/user.api";
 import ProfileAvatarUploader from "@/components/ProfileAvatarUploader";
-import  SolveHeatmap  from "@/components/SolveHeatmap";
+import SolveHeatmap from "@/components/SolveHeatmap";
+import { useAuth } from "@/context/AuthContext";
 
 type ProfileData = {
   id: string;
@@ -32,10 +30,11 @@ type ProfileData = {
 };
 
 export default function Profile() {
+  const { refreshMe } = useAuth();
+
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [form, setForm] = useState({
     name: "",
-    avatarUrl: "",
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -54,7 +53,6 @@ export default function Profile() {
       setProfile(data);
       setForm({
         name: data?.name || "",
-        avatarUrl: data?.avatarUrl || "",
       });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to load profile");
@@ -72,11 +70,11 @@ export default function Profile() {
       setSaving(true);
       const res = await updateMyProfileApi({
         name: form.name,
-        avatarUrl: form.avatarUrl,
       });
 
       const data = res?.data;
       setProfile(data);
+      await refreshMe();
 
       toast.success("Profile updated");
     } catch (error: any) {
@@ -84,6 +82,15 @@ export default function Profile() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAvatarUpdated = async ({
+    avatarUrl,
+  }: {
+    avatarUrl: string | null;
+  }) => {
+    setProfile((prev) => (prev ? { ...prev, avatarUrl } : prev));
+    await refreshMe();
   };
 
   if (loading) {
@@ -116,8 +123,7 @@ export default function Profile() {
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
 
-      <div className="container py-8 space-y-6">
-        {/* header */}
+      <div className="container space-y-6 py-8">
         <div className="rounded-[1.8rem] border border-border/70 bg-card/75 p-6 md:p-8">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div>
@@ -142,42 +148,32 @@ export default function Profile() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="metric-card">
                 <Award className="h-4 w-4 text-primary" />
-                <p className="text-3xl font-black">
-                  {profile.solvedCount || 0}
-                </p>
+                <p className="text-3xl font-black">{profile.solvedCount || 0}</p>
                 <p className="text-xs text-muted-foreground">Solved</p>
               </div>
 
               <div className="metric-card">
                 <Flame className="h-4 w-4 text-primary" />
-                <p className="text-3xl font-black">
-                  {profile.streak || 0}
-                </p>
+                <p className="text-3xl font-black">{profile.streak || 0}</p>
                 <p className="text-xs text-muted-foreground">Streak</p>
               </div>
 
               <div className="metric-card">
                 <CalendarDays className="h-4 w-4 text-primary" />
                 <p className="text-sm font-semibold">{memberSince}</p>
-                <p className="text-xs text-muted-foreground">
-                  Member Since
-                </p>
+                <p className="text-xs text-muted-foreground">Member Since</p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* avatar uploader */}
         <ProfileAvatarUploader
           currentName={profile.name}
           currentAvatarUrl={profile.avatarUrl}
           provider={profile.provider}
-          onUpdated={({ avatarUrl }) =>
-            setProfile((prev) => prev && { ...prev, avatarUrl })
-          }
+          onUpdated={handleAvatarUpdated}
         />
 
-        {/* edit form */}
         <div className="rounded-[1.6rem] border border-border/70 bg-card/70 p-5">
           <div className="flex items-center gap-2">
             <UserCircle2 className="h-4 w-4 text-primary" />
@@ -194,20 +190,6 @@ export default function Profile() {
                   setForm((prev) => ({
                     ...prev,
                     name: e.target.value,
-                  }))
-                }
-              />
-            </div>
-
-            <div>
-              <label className="text-sm">Avatar URL</label>
-              <Input
-                className="mt-2 h-12 rounded-xl"
-                value={form.avatarUrl}
-                onChange={(e) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    avatarUrl: e.target.value,
                   }))
                 }
               />
@@ -231,11 +213,8 @@ export default function Profile() {
           </Button>
         </div>
 
-        {/* heatmap */}
         <SolveHeatmap />
       </div>
     </div>
   );
 }
-
-

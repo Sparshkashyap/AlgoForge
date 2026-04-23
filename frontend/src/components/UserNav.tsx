@@ -12,6 +12,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
+const DEFAULT_AVATAR_URL =
+  "https://img.freepik.com/premium-vector/urban-monster-fusion-street-culture-fantasy_1230457-40156.jpg?semt=ais_hybrid&w=740&q=80";
+
 const getInitials = (name?: string) => {
   if (!name) return "AF";
   return name
@@ -38,13 +41,19 @@ export function UserNav() {
 
   if (!user) return null;
 
+  const avatarSrc =
+    user.avatarUrl && user.avatarUrl.trim() !== ""
+      ? user.avatarUrl
+      : DEFAULT_AVATAR_URL;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button className="group relative rounded-full ring-offset-background transition focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
           <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(124,92,255,0.18),transparent_72%)] opacity-0 transition group-hover:opacity-100" />
+
           <Avatar className="relative h-11 w-11 border border-border/70 shadow-[0_10px_24px_rgba(0,0,0,0.12)]">
-            {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.name} /> : null}
+            <AvatarImage src={avatarSrc} alt={user.name} />
             <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/10 font-semibold text-primary">
               {getInitials(user.name)}
             </AvatarFallback>
@@ -59,7 +68,7 @@ export function UserNav() {
         <DropdownMenuLabel className="rounded-xl px-3 py-3">
           <div className="flex items-start gap-3">
             <Avatar className="h-11 w-11 border border-border/70">
-              {user.avatarUrl ? <AvatarImage src={user.avatarUrl} alt={user.name} /> : null}
+              <AvatarImage src={avatarSrc} alt={user.name} />
               <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/10 font-semibold text-primary">
                 {getInitials(user.name)}
               </AvatarFallback>

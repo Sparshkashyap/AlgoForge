@@ -21,6 +21,7 @@ type AuthUser = {
   createdAt?: string;
   solvedCount?: number;
   streak?: number;
+   subscriptionActive?: boolean;
 };
 
 type LoginPayload = {

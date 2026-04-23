@@ -3,13 +3,9 @@ import { Link, useLocation, NavLink, useNavigate } from "react-router-dom";
 import {
   LogOut,
   Menu,
-  Settings,
   Sparkles,
-  UserCircle2,
-  Bot,
   LayoutDashboard,
 } from "lucide-react";
-import { motion } from "framer-motion";
 import { toast } from "react-toastify";
 
 import { BrandLogo } from "@/components/BrandLogo";
@@ -20,17 +16,6 @@ import { useAuth } from "@/context/AuthContext";
 import { UserNav } from "@/components/UserNav";
 import NotificationBell from "@/components/NotificationBell";
 
-function NavLinkText({ label }: { label: string }) {
-  return (
-    <span className="relative block h-6 overflow-hidden">
-      <span className="nav-text-slide block">
-        <span className="block h-6">{label}</span>
-        <span className="block h-6 text-foreground">{label}</span>
-      </span>
-    </span>
-  );
-}
-
 export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -40,20 +25,19 @@ export function Navbar() {
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setIsScrolled(window.scrollY > 14);
-    onScroll();
+    const onScroll = () => setIsScrolled(window.scrollY > 10);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
+  // ✅ CLEAN NAV STRUCTURE
   const navItems = useMemo(() => {
     if (!isAuthenticated) {
       return [
-        { label: "Home", to: "/" },
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
         { label: "Roadmap", to: "/roadmap" },
-        { label: "Pricing", to: "/upgrade" },
+        { label: "Pricing", to: "/pricing" }, // ✅ FIXED
       ];
     }
 
@@ -62,7 +46,6 @@ export function Navbar() {
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
         { label: "Admin", to: "/admin-dashboard" },
-        { label: "AI Chat", to: "/ai-chat" },
       ];
     }
 
@@ -71,24 +54,19 @@ export function Navbar() {
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
         { label: "Creator", to: "/creator-dashboard" },
-        { label: "AI Chat", to: "/ai-chat" },
       ];
     }
 
+    // ✅ USER
     return [
       { label: "Problems", to: "/problems" },
       { label: "Contests", to: "/contests" },
       { label: "Roadmap", to: "/roadmap" },
-      { label: "Analytics", to: "/submission-analytics" },
+      { label: "Pricing", to: "/pricing" }, // ✅ USER ONLY
     ];
   }, [isAuthenticated, user?.role]);
 
-  const dashboardHref =
-    user?.role === "ADMIN"
-      ? "/admin-dashboard"
-      : user?.role === "CREATOR"
-      ? "/creator-dashboard"
-      : "/dashboard";
+ const dashboardHref = "/dashboard";
 
   const handleLogout = async () => {
     try {
@@ -106,17 +84,19 @@ export function Navbar() {
       className={[
         "sticky top-0 z-50 transition-all duration-300",
         isScrolled
-          ? "border-b border-border/70 bg-background/84 shadow-[0_10px_40px_rgba(0,0,0,0.08)] backdrop-blur-2xl"
-          : "border-b border-transparent bg-background/52 backdrop-blur-xl",
+          ? "bg-background/90 backdrop-blur-xl border-b shadow-sm"
+          : "bg-background/60 backdrop-blur",
       ].join(" ")}
     >
-      <div className="container flex h-[84px] items-center justify-between gap-4">
+      <div className="container flex h-[70px] items-center justify-between">
+        {/* LOGO */}
         <Link to="/" className="shrink-0">
           <BrandLogo />
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden items-center gap-2 rounded-full border border-border/70 bg-card/65 p-2 shadow md:flex">
+        {/* NAV LINKS */}
+        
+        <nav className="hidden md:flex items-center gap-8">
           {navItems.map((item) => {
             const active = location.pathname === item.to;
 
@@ -124,87 +104,82 @@ export function Navbar() {
               <Link
                 key={item.to}
                 to={item.to}
-                className="group relative rounded-full px-5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground"
+                className="group relative text-sm font-medium text-muted-foreground hover:text-foreground transition"
               >
-                {active && (
-                  <motion.span
-                    layoutId="nav-pill"
-                    className="absolute inset-0 rounded-full bg-primary/12"
-                  />
-                )}
+                {item.label}
 
-                <span className={`relative z-10 ${active ? "text-foreground" : ""}`}>
-                  <NavLinkText label={item.label} />
-                </span>
+                {/* 🔥 UNDERLINE ANIMATION */}
+                <span
+                  className={`absolute left-0 -bottom-1 h-[2px] w-0 bg-primary transition-all duration-300 group-hover:w-full ${
+                    active ? "w-full" : ""
+                  }`}
+                />
               </Link>
             );
           })}
         </nav>
 
-        {/* Desktop right */}
-        <div className="hidden items-center gap-3 md:flex">
+        {/* RIGHT SIDE */}
+        <div className="hidden md:flex items-center gap-3">
           <ModeToggle />
 
           {isAuthenticated ? (
             <>
               <NotificationBell />
 
-              <Link to="/ai-chat">
-                <Button variant="outline" className="rounded-full">
-                  <Bot className="mr-2 h-4 w-4" />
-                  AI
-                </Button>
-              </Link>
+    <Link
+  to={dashboardHref}
+  className="group relative inline-flex items-center justify-center rounded-full p-[1px]"
+>
+  {/* 🔥 OUTER ANIMATED BORDER */}
+  <span className="absolute inset-0 rounded-full opacity-0 transition duration-300 group-hover:opacity-100">
+    <span className="absolute inset-0 animate-borderMove rounded-full bg-[linear-gradient(120deg,#6366f1,#ec4899,#22d3ee,#6366f1)] bg-[length:300%_300%]" />
+  </span>
 
-              <Link to={dashboardHref}>
-                <Button variant="outline" className="rounded-full">
-                  <LayoutDashboard className="mr-2 h-4 w-4" />
-                  Dashboard
-                </Button>
-              </Link>
+  {/* INNER CONTENT */}
+  <span className="relative z-10 flex items-center rounded-full bg-background px-4 py-2 text-sm font-medium text-muted-foreground transition group-hover:text-foreground">
+    <LayoutDashboard className="mr-2 h-4 w-4" />
+    Dashboard
+  </span>
+</Link>
 
               <UserNav />
             </>
           ) : (
             <>
               <Link to="/login">
-                <Button variant="ghost" className="rounded-full">
-                  Sign In
-                </Button>
+                <Button variant="ghost">Sign In</Button>
               </Link>
 
               <Link to="/signup">
-                <Button className="rounded-full">
+                <Button>
                   <Sparkles className="mr-2 h-4 w-4" />
-                  Start Forging
+                  Get Started
                 </Button>
               </Link>
             </>
           )}
         </div>
 
-        {/* Mobile */}
+        {/* MOBILE */}
         <div className="flex items-center gap-2 md:hidden">
           <ModeToggle />
-          {isAuthenticated && <NotificationBell />}
 
           <Sheet open={open} onOpenChange={setOpen}>
             <SheetTrigger asChild>
-              <Button variant="outline" size="icon" className="rounded-full">
-                <Menu className="h-5 w-5" />
+              <Button size="icon" variant="outline">
+                <Menu />
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="w-[86vw]">
-              <div className="mt-6 flex flex-col gap-3">
-                <BrandLogo />
-
+            <SheetContent side="right">
+              <div className="flex flex-col gap-4 mt-6">
                 {navItems.map((item) => (
                   <NavLink
                     key={item.to}
                     to={item.to}
                     onClick={() => setOpen(false)}
-                    className="rounded-xl px-4 py-3 text-sm"
+                    className="text-base"
                   >
                     {item.label}
                   </NavLink>
@@ -212,32 +187,13 @@ export function Navbar() {
 
                 {isAuthenticated ? (
                   <>
-                    <NavLink to="/ai-chat" onClick={() => setOpen(false)}>
-                      AI Chat
-                    </NavLink>
-
-                    <NavLink to={dashboardHref} onClick={() => setOpen(false)}>
-                      Dashboard
-                    </NavLink>
-
-                    <NavLink to="/profile" onClick={() => setOpen(false)}>
-                      Profile
-                    </NavLink>
-
-                    <Button onClick={handleLogout} variant="outline">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </Button>
+                    <Link to={dashboardHref}>Dashboard</Link>
+                    <Button onClick={handleLogout}>Logout</Button>
                   </>
                 ) : (
                   <>
-                    <Link to="/login" onClick={() => setOpen(false)}>
-                      <Button variant="outline">Login</Button>
-                    </Link>
-
-                    <Link to="/signup" onClick={() => setOpen(false)}>
-                      <Button>Sign Up</Button>
-                    </Link>
+                    <Link to="/login">Login</Link>
+                    <Link to="/signup">Signup</Link>
                   </>
                 )}
               </div>

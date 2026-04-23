@@ -7,10 +7,26 @@ import {
 } from "../services/ai.service.js";
 import { assertPremiumAccess } from "../services/featureGate.service.js";
 
+const normalizeHistory = (history) => {
+  if (!Array.isArray(history)) return [];
+
+  return history
+    .slice(-10)
+    .map((item) => ({
+      role: item?.role === "assistant" ? "assistant" : "user",
+      content: String(item?.content || "").trim(),
+    }))
+    .filter((item) => item.content);
+};
+
 export const askAiAssistantController = async (req, res, next) => {
   try {
+    // ✅ NEW: subscription check for AI Chat
+    assertPremiumAccess(req.user, "AI Chat");
+
     const body = req.validated?.body ?? req.body;
     const message = String(body.message || "").trim();
+    const history = normalizeHistory(body.history);
 
     if (!message) {
       return res.status(400).json({
@@ -21,6 +37,7 @@ export const askAiAssistantController = async (req, res, next) => {
 
     const data = await askAiAssistantService({
       message,
+      history,
       userId: req.user.userId,
       role: req.user.role,
     });

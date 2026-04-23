@@ -235,19 +235,12 @@ export default function Dashboard() {
                 </Button>
               </Link>
 
-              <Link to="/ai-chat">
-                <Button variant="outline" className="w-full rounded-xl">
-                  <Bot className="mr-2 h-4 w-4" />
-                  AI Chat
-                </Button>
-              </Link>
+              
             </div>
           </motion.div>
         </div>
 
-        <motion.div className="mt-6" {...fade(0.26)}>
-          <AIChatBox />
-        </motion.div>
+       
 
         <motion.div
           className="mt-6 rounded-[1.8rem] border border-border/70 bg-card/75 p-6 backdrop-blur-xl"

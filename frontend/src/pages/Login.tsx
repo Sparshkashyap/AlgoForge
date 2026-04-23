@@ -350,7 +350,7 @@ export default function Login() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="you@example.com"
+                      placeholder="Enter your email"
                       className="mt-2 h-12 rounded-2xl border-border/70 bg-background/50"
                       value={form.email}
                       onChange={(e) =>

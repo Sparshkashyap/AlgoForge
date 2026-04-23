@@ -33,6 +33,7 @@
     "ioredis": "^5.10.1",
     "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.5.0",
     "morgan": "^1.10.1",
     "multer": "^2.1.1",
     "next-auth": "^4.24.14",

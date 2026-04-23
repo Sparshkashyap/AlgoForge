@@ -41,8 +41,8 @@ const env = {
     process.env.PASSWORD_RESET_BASE_URL ||
     "http://localhost:5173/reset-password",
 
-  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",
-  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
+  RAZORPAY_KEY: process.env.RAZORPAY_KEY || "",
+  RAZORPAY_SECRET: process.env.RAZORPAY_SECRET || "",
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
   RAZORPAY_STANDARD_PLAN_ID: process.env.RAZORPAY_STANDARD_PLAN_ID || "",
   RAZORPAY_PRO_PLAN_ID: process.env.RAZORPAY_PRO_PLAN_ID || "",
@@ -89,7 +89,7 @@ if (!env.REDIS_URL) {
   console.warn("REDIS_URL is missing. Realtime/cache/background features may not work.");
 }
 
-if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
+if (!env.RAZORPAY_KEY || !env.RAZORPAY_SECRET) {
   console.warn("Razorpay keys are missing. Billing will not work.");
 }
 
