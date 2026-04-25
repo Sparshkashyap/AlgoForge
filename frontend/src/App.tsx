@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ToastContainer } from "react-toastify";
 import { useEffect, useState, type ReactNode } from "react";
+import { CookieProvider } from "@/context/CookieContext";
+import CookieBanner from "./components/CookieBanner";
 
 import ProtectedRoute from "@/components/ProtectedRoute";
 import SplashScreen from "@/components/SplashScreen";
@@ -47,6 +49,9 @@ import AdminSales from "@/pages/AdminSales";
 import AdminProblemReview from "@/pages/AdminProblemReview";
 import Roadmap from "@/pages/Roadmap";
 
+import RouteLoader from "@/components/RouteLoader";
+
+
 const queryClient = new QueryClient();
 
 type Role = "USER" | "CREATOR" | "ADMIN";
@@ -65,18 +70,32 @@ function FloatingAiLayer() {
 
 function AppShell() {
   const [showSplash, setShowSplash] = useState(true);
-
+  
   useRealtimeUserChannel();
+
+
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1800);
     return () => clearTimeout(timer);
   }, []);
 
+  
+
   return (
     <TooltipProvider>
       <BrowserRouter>
         <SplashScreen show={showSplash} />
+
+
+
+          <RouteLoader />
+
+
+
+
+        
+
 
         <Routes>
           <Route path="/" element={<Index />} />
@@ -131,6 +150,7 @@ function AppShell() {
               ["USER", "CREATOR", "ADMIN"]
             )}
           />
+          
           <Route
             path="/bookmarks"
             element={withProtection(
@@ -240,6 +260,8 @@ function AppShell() {
 
         <FloatingAiLayer />
 
+        <CookieBanner/>
+
         <ToastContainer position="top-right" autoClose={2000} theme="colored" />
       </BrowserRouter>
     </TooltipProvider>
@@ -249,7 +271,9 @@ function AppShell() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppShell />
+      <CookieProvider>
+        <AppShell />
+      </CookieProvider>
     </QueryClientProvider>
   );
 }

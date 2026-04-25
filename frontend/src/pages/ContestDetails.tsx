@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { getContestByIdApi, registerForContestApi } from "@/api/contest.api";
 import { useAuth } from "@/context/AuthContext";
+import ContestLeaderboard from "@/components/ContestLeaderboard"; // add at top
 
 type ContestDetailsType = {
   id: string;
@@ -211,6 +212,11 @@ export default function ContestDetails() {
           </div>
         )}
       </div>
+      <div className="mt-10">
+  <ContestLeaderboard contestId={contestId} />
+</div>
     </div>
+
+    
   );
 }

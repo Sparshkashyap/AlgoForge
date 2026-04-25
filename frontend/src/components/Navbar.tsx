@@ -5,6 +5,9 @@ import {
   Menu,
   Sparkles,
   LayoutDashboard,
+  PlusCircle,
+  Trophy,
+  Crown,Eye,Settings,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -21,8 +24,14 @@ export function Navbar() {
   const navigate = useNavigate();
   const { isAuthenticated, logout, user } = useAuth();
 
+  const isFreeUser = user?.role === "USER" && user?.plan === "FREE";
+const isPaidUser =
+  user?.role === "USER" &&
+  (user?.plan === "STANDARD" || user?.plan === "PRO");
+
   const [isScrolled, setIsScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+
 
   useEffect(() => {
     const onScroll = () => setIsScrolled(window.scrollY > 10);
@@ -30,14 +39,13 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ✅ CLEAN NAV STRUCTURE
   const navItems = useMemo(() => {
     if (!isAuthenticated) {
       return [
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
         { label: "Roadmap", to: "/roadmap" },
-        { label: "Pricing", to: "/pricing" }, // ✅ FIXED
+        { label: "Pricing", to: "/pricing" },
       ];
     }
 
@@ -45,6 +53,7 @@ export function Navbar() {
       return [
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
+        { label: "Manage Contests", to: "/manage-contests" },
         { label: "Admin", to: "/admin-dashboard" },
       ];
     }
@@ -57,16 +66,20 @@ export function Navbar() {
       ];
     }
 
-    // ✅ USER
     return [
       { label: "Problems", to: "/problems" },
       { label: "Contests", to: "/contests" },
       { label: "Roadmap", to: "/roadmap" },
-      { label: "Pricing", to: "/pricing" }, // ✅ USER ONLY
+      { label: "Pricing", to: "/pricing" },
     ];
   }, [isAuthenticated, user?.role]);
 
- const dashboardHref = "/dashboard";
+  const dashboardHref =
+    user?.role === "ADMIN"
+      ? "/admin-dashboard"
+      : user?.role === "CREATOR"
+      ? "/creator-dashboard"
+      : "/dashboard";
 
   const handleLogout = async () => {
     try {
@@ -89,13 +102,10 @@ export function Navbar() {
       ].join(" ")}
     >
       <div className="container flex h-[70px] items-center justify-between">
-        {/* LOGO */}
         <Link to="/" className="shrink-0">
           <BrandLogo />
         </Link>
 
-        {/* NAV LINKS */}
-        
         <nav className="hidden md:flex items-center gap-8">
           {navItems.map((item) => {
             const active = location.pathname === item.to;
@@ -108,10 +118,9 @@ export function Navbar() {
               >
                 {item.label}
 
-                {/* 🔥 UNDERLINE ANIMATION */}
                 <span
-                  className={`absolute left-0 -bottom-1 h-[2px] w-0 bg-primary transition-all duration-300 group-hover:w-full ${
-                    active ? "w-full" : ""
+                  className={`absolute left-0 -bottom-1 h-[2px] bg-primary transition-all duration-300 group-hover:w-full ${
+                    active ? "w-full" : "w-0"
                   }`}
                 />
               </Link>
@@ -119,29 +128,67 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* RIGHT SIDE */}
+        
+
         <div className="hidden md:flex items-center gap-3">
+
+
+
+  {isAuthenticated && user?.role === "USER" && (
+  isFreeUser ? (
+    <Link to="/pricing">
+      <Button className="rounded-full bg-primary px-4 text-primary-foreground hover:bg-primary/90">
+        Upgrade
+        <Crown className="ml-2 h-4 w-4" />
+      </Button>
+    </Link>
+  ) : (
+    <Button
+      disabled
+      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-4 text-emerald-600 cursor-default"
+    >
+      Enrolled
+      <Crown className="ml-2 h-4 w-4 text-emerald-600" />
+    </Button>
+  )
+)}
+
+
+
           <ModeToggle />
 
           {isAuthenticated ? (
             <>
               <NotificationBell />
 
-    <Link
-  to={dashboardHref}
-  className="group relative inline-flex items-center justify-center rounded-full p-[1px]"
->
-  {/* 🔥 OUTER ANIMATED BORDER */}
-  <span className="absolute inset-0 rounded-full opacity-0 transition duration-300 group-hover:opacity-100">
-    <span className="absolute inset-0 animate-borderMove rounded-full bg-[linear-gradient(120deg,#6366f1,#ec4899,#22d3ee,#6366f1)] bg-[length:300%_300%]" />
-  </span>
+              {user?.role === "ADMIN" && (
+                <Link to="/create-contest">
+               <Button className="group relative rounded-full p-[1px]">
+  {/* animated gradient border */}
+  <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-500 via-fuchsia-500 to-orange-400 opacity-80 transition-all duration-500 group-hover:opacity-100" />
 
-  {/* INNER CONTENT */}
-  <span className="relative z-10 flex items-center rounded-full bg-background px-4 py-2 text-sm font-medium text-muted-foreground transition group-hover:text-foreground">
-    <LayoutDashboard className="mr-2 h-4 w-4" />
-    Dashboard
+  {/* inner */}
+  <span className="relative z-10 flex items-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-gray-800 shadow-sm transition-all duration-300 group-hover:bg-white/90 group-hover:shadow-md">
+    <PlusCircle className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:rotate-90 group-hover:text-pink-500" />
+    Create Contest
   </span>
-</Link>
+</Button>
+                </Link>
+              )}
+
+              <Link
+                to={dashboardHref}
+                className="group relative inline-flex items-center justify-center rounded-full p-[1px]"
+              >
+                <span className="absolute inset-0 rounded-full opacity-0 transition duration-300 group-hover:opacity-100">
+                  <span className="absolute inset-0 animate-borderMove rounded-full bg-[linear-gradient(120deg,#6366f1,#ec4899,#22d3ee,#6366f1)] bg-[length:300%_300%]" />
+                </span>
+
+                <span className="relative z-10 flex items-center rounded-full bg-background px-4 py-2 text-sm font-medium text-muted-foreground transition group-hover:text-foreground">
+                  <LayoutDashboard className="mr-2 h-4 w-4" />
+                  Dashboard
+                </span>
+              </Link>
 
               <UserNav />
             </>
@@ -161,8 +208,28 @@ export function Navbar() {
           )}
         </div>
 
-        {/* MOBILE */}
         <div className="flex items-center gap-2 md:hidden">
+
+{isAuthenticated && user?.role === "USER" && (
+  isFreeUser ? (
+    <Link to="/pricing" onClick={() => setOpen(false)}>
+      <Button size="sm" className="rounded-full">
+        <Crown className="h-4 w-4" />
+      </Button>
+    </Link>
+  ) : (
+    <Button
+      size="sm"
+      disabled
+      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-600"
+    >
+      <Crown className="h-4 w-4" />
+    </Button>
+  )
+)}
+
+  
+
           <ModeToggle />
 
           <Sheet open={open} onOpenChange={setOpen}>
@@ -187,13 +254,45 @@ export function Navbar() {
 
                 {isAuthenticated ? (
                   <>
-                    <Link to={dashboardHref}>Dashboard</Link>
-                    <Button onClick={handleLogout}>Logout</Button>
+                    {user?.role === "ADMIN" && (
+                      <>
+                        <Link
+                          to="/create-contest"
+                          onClick={() => setOpen(false)}
+                          className="inline-flex items-center gap-2"
+                        >
+                          <PlusCircle className="h-4 w-4" />
+                          Create Contest
+                        </Link>
+
+                        <Link
+                          to="/manage-contests"
+                          onClick={() => setOpen(false)}
+                          className="inline-flex items-center gap-2"
+                        >
+                          <Trophy className="h-4 w-4" />
+                          Manage Contests
+                        </Link>
+                      </>
+                    )}
+
+                    <Link to={dashboardHref} onClick={() => setOpen(false)}>
+                      Dashboard
+                    </Link>
+
+                    <Button onClick={handleLogout}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Logout
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <Link to="/login">Login</Link>
-                    <Link to="/signup">Signup</Link>
+                    <Link to="/login" onClick={() => setOpen(false)}>
+                      Login
+                    </Link>
+                    <Link to="/signup" onClick={() => setOpen(false)}>
+                      Signup
+                    </Link>
                   </>
                 )}
               </div>
@@ -203,4 +302,4 @@ export function Navbar() {
       </div>
     </header>
   );
-}
+} 

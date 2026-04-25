@@ -2,6 +2,14 @@ import { Queue } from "bullmq";
 import env from "../config/env.js";
 import redisConnection from "../config/redis.js";
 
+const safeJobId = (value) => {
+  return String(value || Date.now())
+    .replace(/:/g, "-")
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 180);
+};
+
 export const notificationQueue = new Queue("notification-jobs", {
   connection: redisConnection,
   defaultJobOptions: {
@@ -30,7 +38,7 @@ export const enqueuePublishedProblemFanoutJob = async ({
       difficulty,
     },
     {
-      jobId: `problem-published:${problemId}`,
+      jobId: safeJobId(`problem-published-${problemId}`),
     }
   );
 };
@@ -50,7 +58,7 @@ export const enqueueContestReminderJob = async ({
     },
     {
       delay,
-      jobId: `contest-reminder:${contestId}:${reminderMinutes}`,
+      jobId: safeJobId(`contest-reminder-${contestId}-${reminderMinutes}`),
     }
   );
 };
@@ -60,7 +68,7 @@ export const enqueueDailyQuestionAssignmentJob = async () => {
     "daily-question-assignment",
     {},
     {
-      jobId: `daily-question:manual:${Date.now()}`,
+      jobId: safeJobId(`daily-question-manual-${Date.now()}`),
     }
   );
 };

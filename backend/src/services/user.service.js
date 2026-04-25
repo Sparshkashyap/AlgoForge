@@ -11,6 +11,7 @@ import { getMyBadgesService } from "./badge.service.js";
 const profileSelect = {
   id: true,
   name: true,
+  username:true, 
   email: true,
   role: true,
   plan: true,
@@ -178,24 +179,36 @@ export const updateUserAvatarByAdminService = async (
 };
 
 export const getMySolveStatsService = async (userId) => {
-  const accepted = await prisma.submission.findMany({
-    where: {
-      userId,
-      OR: [
-        { verdict: "Accepted" },
-        { verdict: "ACCEPTED" },
-        { status: "ACCEPTED" },
-      ],
-    },
-    select: {
-      problemId: true,
-      problem: {
-        select: {
-          difficulty: true,
+  const [accepted, totals] = await Promise.all([
+    prisma.submission.findMany({
+      where: {
+        userId,
+        OR: [
+          { verdict: "Accepted" },
+          { verdict: "ACCEPTED" },
+          { status: "ACCEPTED" },
+        ],
+      },
+      select: {
+        problemId: true,
+        problem: {
+          select: {
+            difficulty: true,
+          },
         },
       },
-    },
-  });
+    }),
+
+    prisma.problem.groupBy({
+      by: ["difficulty"],
+      where: {
+        isPublished: true,
+      },
+      _count: {
+        id: true,
+      },
+    }),
+  ]);
 
   const uniqueByProblem = new Map();
 
@@ -204,28 +217,43 @@ export const getMySolveStatsService = async (userId) => {
 
     uniqueByProblem.set(
       entry.problemId,
-      String(entry.problem?.difficulty || "EASY").toUpperCase()
+      String(entry.problem?.difficulty || "Easy").toUpperCase()
     );
   }
 
-  let easy = 0;
-  let medium = 0;
-  let hard = 0;
+  let easySolved = 0;
+  let mediumSolved = 0;
+  let hardSolved = 0;
 
   for (const difficulty of uniqueByProblem.values()) {
-    if (difficulty === "EASY") easy += 1;
-    else if (difficulty === "MEDIUM") medium += 1;
-    else if (difficulty === "HARD") hard += 1;
+    if (difficulty === "EASY") easySolved += 1;
+    else if (difficulty === "MEDIUM") mediumSolved += 1;
+    else if (difficulty === "HARD") hardSolved += 1;
   }
+
+  const getTotal = (difficulty) =>
+    totals.find(
+      (item) => String(item.difficulty).toUpperCase() === difficulty
+    )?._count?.id || 0;
+
+  const easyTotal = getTotal("EASY");
+  const mediumTotal = getTotal("MEDIUM");
+  const hardTotal = getTotal("HARD");
 
   return {
     totalSolved: uniqueByProblem.size,
-    easySolved: easy,
-    mediumSolved: medium,
-    hardSolved: hard,
+
+    easySolved,
+    mediumSolved,
+    hardSolved,
+
+    easyTotal,
+    mediumTotal,
+    hardTotal,
+
+    totalProblems: easyTotal + mediumTotal + hardTotal,
   };
 };
-
 export const getMyNotificationsService = async (userId) => {
   return listMyNotificationsService(userId);
 };

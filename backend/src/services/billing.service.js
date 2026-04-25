@@ -98,7 +98,7 @@ export const createSubscriptionCheckoutService = async ({ userId, tier }) => {
   const subscription = await razorpay.subscriptions.create({
     plan_id: planId,
     customer_notify: 1,
-    total_count: 120,
+    total_count: tier === "STANDARD" ? 6 : 12,
     notes: {
       userId,
       plan: tier,

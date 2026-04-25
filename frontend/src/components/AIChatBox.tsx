@@ -2,14 +2,17 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronDown,
+  Crown,
   Loader2,
+  LockKeyhole,
   Minimize2,
   RefreshCcw,
   SendHorizontal,
+  Sparkles,
   X,
   Zap,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 import AIRobotMascot from "@/components/AIRobotMascot";
@@ -48,6 +51,7 @@ const CHAT_WIDTH = 460;
 const CHAT_HEIGHT = 360;
 const CHAT_MARGIN = 14;
 const CHAT_VERTICAL_GAP = 8;
+const DEFAULT_MODEL_LABEL = "llama-3.3-70b-versatile";
 
 const createId = () =>
   `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -79,9 +83,15 @@ const welcomeMessage = (
     role === "ADMIN"
       ? "Admin copilot ready. Platform health, review queue, premium conversion, moderation, growth aur ops insights pooch sakte ho."
       : role === "CREATOR"
-      ? "Creator copilot ready. Draft quality, testcase depth, rejection fixes, publishing readiness aur problem quality pooch sakte ho."
-      : "Practice copilot ready. Weak topics, next problems, roadmap, contests, analytics aur bookmarks ke basis par help karunga.",
+        ? "Creator copilot ready. Draft quality, testcase depth, rejection fixes, publishing readiness aur problem quality pooch sakte ho."
+        : "Practice copilot ready. Weak topics, next problems, roadmap, contests, analytics aur bookmarks ke basis par help karunga.",
   suggestions: quickPrompts[role],
+  meta: {
+    model: DEFAULT_MODEL_LABEL,
+    usedFallback: false,
+    intent: "welcome",
+    retrievedChunkCount: 0,
+  },
 });
 
 const clamp = (value: number, min: number, max: number) =>
@@ -114,8 +124,16 @@ const clampChatPosition = (position: Position): Position => {
   const { width, height } = getViewport();
 
   return {
-    x: clamp(position.x, CHAT_MARGIN, Math.max(width - CHAT_WIDTH - CHAT_MARGIN, CHAT_MARGIN)),
-    y: clamp(position.y, CHAT_MARGIN, Math.max(height - CHAT_HEIGHT - CHAT_MARGIN, CHAT_MARGIN)),
+    x: clamp(
+      position.x,
+      CHAT_MARGIN,
+      Math.max(width - CHAT_WIDTH - CHAT_MARGIN, CHAT_MARGIN)
+    ),
+    y: clamp(
+      position.y,
+      CHAT_MARGIN,
+      Math.max(height - CHAT_HEIGHT - CHAT_MARGIN, CHAT_MARGIN)
+    ),
   };
 };
 
@@ -133,17 +151,14 @@ const getChatPositionFromRobot = (robotPosition: Position): Position => {
   return clampChatPosition({ x, y });
 };
 
-
-
-
 export default function AIChatBox() {
+  const navigate = useNavigate();
   const { user } = useAuth();
 
-  if (user.role === "USER" && !user.subscriptionActive) {
-  return null;
-}
-
   const role = (user?.role || "USER") as "USER" | "CREATOR" | "ADMIN";
+  const isPaidUser = user?.plan === "STANDARD" || user?.plan === "PRO";
+  const isPrivilegedUser = user?.role === "ADMIN" || user?.role === "CREATOR";
+  const hasAccess = isPrivilegedUser || isPaidUser;
 
   const [open, setOpen] = useState(false);
   const [minimized, setMinimized] = useState(false);
@@ -169,7 +184,6 @@ export default function AIChatBox() {
   const pointerOffsetRef = useRef({ x: 0, y: 0 });
   const dragDistanceRef = useRef(0);
   const lastPointerRef = useRef({ x: 0, y: 0 });
-
   const chatPointerOffsetRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -305,8 +319,8 @@ export default function AIChatBox() {
           suggestions: data?.suggestedPrompts || [],
           meta: {
             intent: data?.meta?.intent,
-            model: data?.meta?.model,
-            usedFallback: data?.meta?.usedFallback,
+            model: data?.meta?.model || DEFAULT_MODEL_LABEL,
+            usedFallback: Boolean(data?.meta?.usedFallback),
             retrievedChunkCount: data?.meta?.retrievedChunkCount,
           },
         },
@@ -371,6 +385,50 @@ export default function AIChatBox() {
     setIsDraggingChat(true);
   };
 
+  if (!user) {
+    return null;
+  }
+
+  // if (!hasAccess) {
+  //   return (
+  //     <div className="fixed bottom-5 right-5 z-[79] w-[calc(100vw-2rem)] max-w-[340px] overflow-hidden rounded-[1.6rem] border border-border/70 bg-card/90 p-4 shadow-[0_22px_70px_rgba(0,0,0,0.24)] backdrop-blur-2xl">
+  //       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.18),transparent_36%)]" />
+
+  //       <div className="relative z-10 flex items-start gap-3">
+  //         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10 text-primary">
+  //           <LockKeyhole className="h-5 w-5" />
+  //         </div>
+
+  //         <div>
+  //           <div className="flex items-center gap-2">
+  //             <p className="font-semibold">AI Copilot locked</p>
+  //             <span className="rounded-full border border-yellow-500/20 bg-yellow-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-yellow-400">
+  //               Premium
+  //             </span>
+  //           </div>
+
+  //           <p className="mt-1 text-sm leading-6 text-muted-foreground">
+  //             Upgrade to Standard or Pro to use the practice AI assistant.
+  //           </p>
+
+  //           <Button
+  //             type="button"
+  //             onClick={() => navigate("/pricing")}
+  //             className="mt-3 h-10 rounded-xl"
+  //           >
+  //             Upgrade
+  //             <Crown className="ml-2 h-4 w-4" />
+  //           </Button>
+  //         </div>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+
+  if(!hasAccess)
+{
+  return null;
+}
   return (
     <>
       <AnimatePresence>
@@ -391,6 +449,7 @@ export default function AIChatBox() {
               className="relative cursor-grab overflow-hidden border-b border-white/10 px-4 pb-3 pt-3 active:cursor-grabbing"
             >
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(111,244,255,0.18),transparent_34%),radial-gradient(circle_at_top_right,rgba(244,114,182,0.16),transparent_30%),radial-gradient(circle_at_center,rgba(99,102,241,0.14),transparent_42%)]" />
+
               <div className="relative flex items-start justify-between gap-3">
                 <button
                   type="button"
@@ -409,7 +468,7 @@ export default function AIChatBox() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs leading-5 text-slate-300">
-                      Role-aware RAG assistant with Gemini answers.
+                      Role-aware RAG assistant powered by {DEFAULT_MODEL_LABEL}.
                     </p>
                   </div>
                 </button>
@@ -508,19 +567,29 @@ export default function AIChatBox() {
                     ) : null}
 
                     {message.meta ? (
-                      <div className="mt-3 flex flex-wrap gap-2 text-[9px] uppercase tracking-[0.12em] text-slate-400">
+                      <div className="mt-3 flex flex-wrap gap-2 text-[9px] uppercase tracking-[0.12em]">
+                        {message.meta.usedFallback ? (
+                          <span className="rounded-full border border-yellow-500/30 bg-yellow-500/10 px-2 py-1 text-yellow-300">
+                            Fallback mode
+                          </span>
+                        ) : (
+                          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-emerald-300">
+                            AI response
+                          </span>
+                        )}
+
                         {message.meta.intent ? (
-                          <span className="rounded-full border border-white/10 px-2 py-1">
+                          <span className="rounded-full border border-white/10 px-2 py-1 text-slate-400">
                             {message.meta.intent.replace(/_/g, " ")}
                           </span>
                         ) : null}
-                        {message.meta.model ? (
-                          <span className="rounded-full border border-white/10 px-2 py-1">
-                            {message.meta.model}
-                          </span>
-                        ) : null}
+
+                        <span className="rounded-full border border-white/10 px-2 py-1 text-slate-400">
+                          {message.meta.model || DEFAULT_MODEL_LABEL}
+                        </span>
+
                         {typeof message.meta.retrievedChunkCount === "number" ? (
-                          <span className="rounded-full border border-white/10 px-2 py-1">
+                          <span className="rounded-full border border-white/10 px-2 py-1 text-slate-400">
                             {message.meta.retrievedChunkCount} chunks
                           </span>
                         ) : null}
@@ -550,7 +619,7 @@ export default function AIChatBox() {
                   <div className="max-w-[82%] rounded-[1.2rem] border border-white/10 bg-white/[0.06] px-4 py-3 text-[14px] text-slate-200">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      Thinking with retrieval + Gemini...
+                      Thinking with RAG + {DEFAULT_MODEL_LABEL}...
                     </div>
                   </div>
                 </div>
@@ -569,16 +638,16 @@ export default function AIChatBox() {
                     role === "ADMIN"
                       ? "Ask about platform health, review queue, premium conversion..."
                       : role === "CREATOR"
-                      ? "Ask about draft quality, rejection reasons, testcase gaps..."
-                      : "Ask about weak topics, next problems, contests, roadmap..."
+                        ? "Ask about draft quality, rejection reasons, testcase gaps..."
+                        : "Ask about weak topics, next problems, contests, roadmap..."
                   }
                   className="w-full resize-none bg-transparent px-2 py-2 text-[14px] leading-6 text-white outline-none placeholder:text-slate-400"
                 />
 
                 <div className="mt-2 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-[11px] text-slate-400">
-                    <Zap className="h-3.5 w-3.5 text-cyan-300" />
-                    Product AI assistant
+                    <Sparkles className="h-3.5 w-3.5 text-cyan-300" />
+                    {DEFAULT_MODEL_LABEL}
                   </div>
 
                   <Button

@@ -10,6 +10,8 @@ const LANGUAGE_MAP = {
   c: 50,
 };
 
+const judge0BaseUrl = String(env.JUDGE0_API_URL || "").replace(/\/+$/, "");
+
 const normalizeOutput = (value) =>
   String(value ?? "").replace(/\r\n/g, "\n").trim();
 
@@ -26,6 +28,12 @@ export const executeJudge0Service = async ({
     throw error;
   }
 
+  if (!judge0BaseUrl) {
+    const error = new Error("JUDGE0_API_URL is not configured");
+    error.statusCode = 500;
+    throw error;
+  }
+
   const headers = {
     "Content-Type": "application/json",
   };
@@ -34,20 +42,30 @@ export const executeJudge0Service = async ({
     headers["X-RapidAPI-Key"] = env.JUDGE0_API_KEY;
   }
 
-  const { data } = await axios.post(
-    `${env.JUDGE0_API_URL}/submissions?base64_encoded=false&wait=true`,
-    {
-      source_code: sourceCode,
-      language_id: languageId,
-      stdin,
-    },
-    {
-      headers,
-      timeout: 120000,
-    }
-  );
+  try {
+    const { data } = await axios.post(
+      `${judge0BaseUrl}/submissions?base64_encoded=false&wait=true`,
+      {
+        source_code: sourceCode,
+        language_id: languageId,
+        stdin,
+      },
+      {
+        headers,
+        timeout: 120000,
+      }
+    );
 
-  return data;
+    return data;
+  } catch (error) {
+    console.error("🔥 Judge0 error:", {
+      status: error.response?.status,
+      data: error.response?.data,
+      url: error.config?.url,
+    });
+
+    throw error;
+  }
 };
 
 export const runProblemCodeService = async ({
@@ -55,18 +73,40 @@ export const runProblemCodeService = async ({
   code,
   testCases,
   driverCode,
+  customInput,
+  expectedOutput,
 }) => {
-  if (!Array.isArray(testCases) || testCases.length === 0) {
+  const hasCustomInput =
+    typeof customInput === "string" && customInput.trim().length > 0;
+
+  const casesToRun = hasCustomInput
+    ? [
+        {
+          input: customInput,
+          expected: expectedOutput ?? "",
+          isCustom: true,
+        },
+      ]
+    : Array.isArray(testCases)
+    ? testCases
+    : [];
+
+  if (!hasCustomInput && casesToRun.length === 0) {
     const error = new Error("At least one test case is required");
     error.statusCode = 400;
     throw error;
   }
 
-  const executableCode = buildExecutableCode({
-    language,
-    userCode: code,
-    driverCode: driverCode?.[language] ?? "",
-  });
+ const executableCode =
+  language?.toLowerCase() === "java" && code.includes("public static void main")
+    ? code
+    : buildExecutableCode({
+        language,
+        userCode: code,
+        driverCode: driverCode?.[language] ?? "",
+      });
+
+  console.log("FINAL SOURCE SENT TO JUDGE0:\n", executableCode);
 
   let passedCount = 0;
   let finalVerdict = "Accepted";
@@ -76,42 +116,66 @@ export const runProblemCodeService = async ({
   let runtime = null;
   let memory = null;
 
-  for (const testCase of testCases) {
+  const results = [];
+
+  for (const testCase of casesToRun) {
     const result = await executeJudge0Service({
       language,
       sourceCode: executableCode,
       stdin: testCase.input,
     });
 
-    finalStdout = result.stdout || "";
-    finalStderr = result.stderr || result.message || "";
-    finalCompileOutput = result.compile_output || "";
+    const stdout = result.stdout || "";
+    const stderr = result.stderr || result.message || "";
+    const compileOutput = result.compile_output || "";
+    const actual = normalizeOutput(stdout);
+    const expected = normalizeOutput(testCase.expected);
+
+    finalStdout = stdout;
+    finalStderr = stderr;
+    finalCompileOutput = compileOutput;
     runtime = result.time || null;
     memory = result.memory || null;
 
-    if (result.compile_output) {
-      finalVerdict = "Compilation Error";
-      break;
-    }
+    let caseVerdict = "Accepted";
 
-    if (
+    if (compileOutput) {
+      caseVerdict = "Compilation Error";
+      finalVerdict = "Compilation Error";
+    } else if (
       result.stderr ||
       result.message ||
       (result.status?.id && result.status.id >= 11 && result.status.id !== 3)
     ) {
+      caseVerdict = "Runtime Error";
       finalVerdict = "Runtime Error";
-      break;
-    }
-
-    const actual = normalizeOutput(result.stdout);
-    const expected = normalizeOutput(testCase.expected);
-
-    if (actual !== expected) {
+    } else if (!hasCustomInput && actual !== expected) {
+      caseVerdict = "Wrong Answer";
       finalVerdict = "Wrong Answer";
-      break;
+    } else if (hasCustomInput && expected && actual !== expected) {
+      caseVerdict = "Wrong Answer";
+      finalVerdict = "Wrong Answer";
+    } else {
+      passedCount += 1;
     }
 
-    passedCount += 1;
+    results.push({
+      input: testCase.input,
+      expected: testCase.expected,
+      actual,
+      stdout,
+      stderr,
+      compileOutput,
+      status: caseVerdict,
+      verdict: caseVerdict,
+      runtime: result.time || null,
+      memory: result.memory || null,
+      isCustom: Boolean(testCase.isCustom),
+    });
+
+    if (caseVerdict !== "Accepted") {
+      break;
+    }
   }
 
   return {
@@ -123,6 +187,8 @@ export const runProblemCodeService = async ({
     runtime,
     memory,
     passedCount,
-    totalCount: testCases.length,
+    totalCount: casesToRun.length,
+    results,
+    isCustomRun: hasCustomInput,
   };
 };

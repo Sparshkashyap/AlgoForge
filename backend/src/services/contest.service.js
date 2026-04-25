@@ -25,6 +25,14 @@ const ensureProblemsExist = async (problemIds = []) => {
   return problems;
 };
 
+const safeJobId = (value) => {
+  return String(value || Date.now())
+    .replace(/:/g, "-")
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 180);
+};
+
 const scheduleContestReminders = async ({ contestId, startAt }) => {
   const startTime = new Date(startAt).getTime();
 
@@ -47,7 +55,7 @@ const scheduleContestReminders = async ({ contestId, startAt }) => {
         reminderMinutes,
       },
       {
-        jobId: `contest-reminder:${contestId}:${reminderMinutes}`,
+        jobId: safeJobId(`contest-reminder-${contestId}-${reminderMinutes}`),
         delay,
       }
     );

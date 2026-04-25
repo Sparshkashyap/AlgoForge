@@ -10,6 +10,7 @@ import {
 const selectSafeUser = {
   id: true,
   name: true,
+  username: true,
   email: true,
   role: true,
   plan: true,
@@ -23,6 +24,32 @@ const selectSafeUser = {
   lastSeenAt: true,
 };
 
+const slugifyUsername = (name = "") => {
+  return String(name)
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "")
+    .slice(0, 20);
+};
+
+const generateUniqueUsername = async (name) => {
+  const base = slugifyUsername(name) || "user";
+
+  for (let i = 0; i < 10; i += 1) {
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const username = `${base}${suffix}`;
+
+    const existing = await prisma.user.findUnique({
+      where: { username },
+      select: { id: true },
+    });
+
+    if (!existing) return username;
+  }
+
+  return `${base}${Date.now()}`;
+};
+
 export const signupService = async ({
   name,
   email,
@@ -33,7 +60,6 @@ export const signupService = async ({
   await verifyRecaptchaToken({
     token: recaptchaToken,
     remoteIp,
-    expectedAction: "signup",
   });
 
   const normalizedEmail = email.trim().toLowerCase();
@@ -48,11 +74,13 @@ export const signupService = async ({
     throw error;
   }
 
+  const username = await generateUniqueUsername(name);
   const hashedPassword = await hashPassword(password);
 
   const user = await prisma.user.create({
     data: {
       name: name.trim(),
+      username,
       email: normalizedEmail,
       password: hashedPassword,
       provider: "LOCAL",
@@ -75,6 +103,7 @@ export const signupService = async ({
 };
 
 export const loginService = async ({
+  identifier,
   email,
   password,
   recaptchaToken,
@@ -84,26 +113,32 @@ export const loginService = async ({
   await verifyRecaptchaToken({
     token: recaptchaToken,
     remoteIp,
-    expectedAction: "login",
   });
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const rawIdentifier = String(identifier || email || "")
+    .trim()
+    .toLowerCase();
 
   const recentFailedCount = await getRecentFailedLoginCountService({
-    email: normalizedEmail,
+    email: rawIdentifier,
     ipAddress: remoteIp,
     withinMinutes: 30,
   });
 
   const suspiciousByVolume = recentFailedCount >= 5;
 
-  const existingUser = await prisma.user.findUnique({
-    where: { email: normalizedEmail },
+  const existingUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: rawIdentifier },
+        { username: rawIdentifier },
+      ],
+    },
   });
 
   if (!existingUser || !existingUser.password) {
     await createLoginEventService({
-      email: normalizedEmail,
+      email: rawIdentifier,
       success: false,
       reason: "USER_NOT_FOUND_OR_NO_PASSWORD",
       ipAddress: remoteIp,
@@ -119,7 +154,7 @@ export const loginService = async ({
   if (existingUser.isBlocked) {
     await createLoginEventService({
       userId: existingUser.id,
-      email: normalizedEmail,
+      email: existingUser.email,
       success: false,
       reason: "ACCOUNT_BLOCKED",
       ipAddress: remoteIp,
@@ -141,7 +176,7 @@ export const loginService = async ({
   if (!passwordValid) {
     await createLoginEventService({
       userId: existingUser.id,
-      email: normalizedEmail,
+      email: existingUser.email,
       success: false,
       reason: "INVALID_PASSWORD",
       ipAddress: remoteIp,
@@ -164,7 +199,7 @@ export const loginService = async ({
 
   await createLoginEventService({
     userId: user.id,
-    email: normalizedEmail,
+    email: user.email,
     success: true,
     reason: "LOGIN_SUCCESS",
     ipAddress: remoteIp,

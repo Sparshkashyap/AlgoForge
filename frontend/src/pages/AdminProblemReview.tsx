@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { toast } from "react-toastify";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, ChevronDown } from "lucide-react";
 
 import { Navbar } from "@/components/Navbar";
 import AdminSidebar from "@/components/AdminSidebar";
@@ -10,11 +10,13 @@ import {
   rejectProblemApi,
 } from "@/api/problemReview.api";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 export default function AdminProblemReview() {
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   const load = async () => {
     try {
@@ -32,36 +34,36 @@ export default function AdminProblemReview() {
     void load();
   }, []);
 
-  const approve = async (problemId: string) => {
+  const approve = async (id: string) => {
     try {
-      setBusyId(problemId);
-      await approveProblemApi(problemId);
-      toast.success("Problem approved");
+      setBusyId(id);
+      await approveProblemApi(id);
+      toast.success("Approved");
       await load();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Approval failed");
+    } catch {
+      toast.error("Approval failed");
     } finally {
       setBusyId(null);
     }
   };
 
-  const reject = async (problemId: string) => {
-    const reason = window.prompt("Reason for rejection") || "Rejected by admin";
+  const reject = async (id: string) => {
+    const reason = window.prompt("Reason?") || "Rejected by admin";
 
     try {
-      setBusyId(problemId);
-      await rejectProblemApi(problemId, reason);
-      toast.success("Problem rejected");
+      setBusyId(id);
+      await rejectProblemApi(id, reason);
+      toast.success("Rejected");
       await load();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Reject failed");
+    } catch {
+      toast.error("Reject failed");
     } finally {
       setBusyId(null);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background">
       <Navbar />
 
       <div className="container py-8">
@@ -69,61 +71,108 @@ export default function AdminProblemReview() {
           <AdminSidebar />
 
           <div>
-            <div className="mb-6">
-              <h1 className="font-heading text-3xl font-black md:text-4xl">
-                Problem Review Queue
-              </h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Creator can draft. Admin decides what goes live.
-              </p>
-            </div>
+            <h1 className="text-3xl font-black mb-6">
+              Problem Review Queue
+            </h1>
 
             {loading ? (
-              <div className="rounded-2xl border border-border bg-card p-6 text-muted-foreground">
-                Loading review queue...
-              </div>
+              <div className="p-6 border rounded-2xl">Loading...</div>
             ) : items.length === 0 ? (
-              <div className="rounded-2xl border border-border bg-card p-6 text-muted-foreground">
-                No pending problem review items.
+              <div className="p-6 border rounded-2xl text-muted-foreground">
+                No pending reviews
               </div>
             ) : (
-              <div className="grid gap-4">
-                {items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="rounded-[1.5rem] border border-border/70 bg-card/60 p-5"
-                  >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div>
-                        <h2 className="text-lg font-semibold">{item.title}</h2>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          By: {item.createdBy?.name || "Unknown"} •{" "}
-                          {item.createdBy?.email || "-"}
-                        </p>
+              <div className="space-y-5">
+                {items.map((item) => {
+                  const isOpen = expanded === item.id;
 
-                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground">
-                          <span>Difficulty: {item.difficulty}</span>
-                          <span>Premium: {item.isPremium ? "Yes" : "No"}</span>
-                          <span>Published: {item.isPublished ? "Yes" : "No"}</span>
+                  return (
+                    <div
+                      key={item.id}
+                      className="border rounded-2xl p-5 bg-card transition hover:shadow-lg"
+                    >
+                      {/* HEADER */}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h2 className="text-lg font-semibold">
+                            {item.title}
+                          </h2>
+
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {item.createdBy?.name} • {item.createdBy?.email}
+                          </p>
+
+                          <div className="flex gap-2 mt-2">
+                            <Badge>{item.difficulty}</Badge>
+
+                            {item.isPremium && (
+                              <Badge className="bg-emerald-100 text-emerald-700 border border-emerald-400">
+                                PRO
+                              </Badge>
+                            )}
+                          </div>
                         </div>
 
-                        {item.tags?.length ? (
-                          <div className="mt-3 flex flex-wrap gap-2">
-                            {item.tags.map((tag: string) => (
-                              <span
-                                key={tag}
-                                className="rounded-full border border-border/70 px-3 py-1 text-xs text-muted-foreground"
-                              >
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                        ) : null}
+                        <button
+                          onClick={() =>
+                            setExpanded(isOpen ? null : item.id)
+                          }
+                          className="text-muted-foreground"
+                        >
+                          <ChevronDown />
+                        </button>
                       </div>
 
-                      <div className="flex flex-wrap gap-2">
+                      {/* TAGS */}
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {item.tags?.map((tag: string) => (
+                          <span
+                            key={tag}
+                            className="px-2 py-1 text-xs border rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* PREVIEW */}
+                      <div className="mt-4 text-sm text-muted-foreground">
+                        {item.description?.slice(0, 120)}...
+                      </div>
+
+                      {/* EXPANDED VIEW */}
+                      {isOpen && (
+                        <div className="mt-5 space-y-4 border-t pt-4">
+                          <div>
+                            <h3 className="font-semibold">Description</h3>
+                            <p className="text-sm">{item.description}</p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold">Constraints</h3>
+                            <p className="text-sm">{item.constraints || "-"}</p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold">Sample</h3>
+                            <p className="text-sm">
+                              Input: {item.sampleInput}
+                            </p>
+                            <p className="text-sm">
+                              Output: {item.sampleOutput}
+                            </p>
+                          </div>
+
+                          <div>
+                            <h3 className="font-semibold">Explanation</h3>
+                            <p className="text-sm">{item.explanation}</p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ACTIONS */}
+                      <div className="flex gap-2 mt-5">
                         <Button
-                          className="rounded-xl"
                           disabled={busyId === item.id}
                           onClick={() => approve(item.id)}
                         >
@@ -133,7 +182,7 @@ export default function AdminProblemReview() {
 
                         <Button
                           variant="outline"
-                          className="rounded-xl border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300"
+                          className="border-rose-500 text-rose-500"
                           disabled={busyId === item.id}
                           onClick={() => reject(item.id)}
                         >
@@ -142,8 +191,8 @@ export default function AdminProblemReview() {
                         </Button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

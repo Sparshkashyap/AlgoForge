@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { getSocket, attachSocketUser } from "@/lib/socket";
 import {
@@ -19,11 +19,15 @@ export type LiveNotification = {
   createdAt?: string;
 };
 
+const SUMMARY_REFRESH_INTERVAL = 60_000;
+
 export const useNotifications = () => {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<LiveNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(true);
+
+  const lastSummaryFetchRef = useRef(0);
 
   const loadInitialNotifications = useCallback(async () => {
     if (!user?.id) {
@@ -41,6 +45,8 @@ export const useNotifications = () => {
         getMyNotificationSummaryApi(),
       ]);
 
+      lastSummaryFetchRef.current = Date.now();
+
       setNotifications(notificationsRes.data || []);
       setUnreadCount(summaryRes.data?.unreadCount || 0);
     } catch {
@@ -48,6 +54,24 @@ export const useNotifications = () => {
       setUnreadCount(0);
     } finally {
       setLoading(false);
+    }
+  }, [user?.id]);
+
+  const refreshSummary = useCallback(async () => {
+    if (!user?.id) return;
+
+    const now = Date.now();
+
+    if (now - lastSummaryFetchRef.current < SUMMARY_REFRESH_INTERVAL) {
+      return;
+    }
+
+    try {
+      const res = await getMyNotificationSummaryApi();
+      lastSummaryFetchRef.current = Date.now();
+      setUnreadCount(res.data?.unreadCount ?? 0);
+    } catch {
+      // noop
     }
   }, [user?.id]);
 
@@ -62,7 +86,7 @@ export const useNotifications = () => {
     const socket = getSocket();
 
     const handleNotification = (incoming: LiveNotification) => {
-      setNotifications((prev) => [incoming, ...prev]);
+      setNotifications((prev) => [incoming, ...prev].slice(0, 100));
       setUnreadCount((prev) => prev + 1);
     };
 
@@ -76,19 +100,16 @@ export const useNotifications = () => {
   useEffect(() => {
     if (!user?.id) return;
 
-    const interval = setInterval(() => {
-      getMyNotificationSummaryApi()
-        .then((res) => {
-          const next = res.data?.unreadCount ?? 0;
-          setUnreadCount(next);
-        })
-        .catch(() => {
-          // noop
-        });
-    }, 15000);
+    const onFocus = () => {
+      void refreshSummary();
+    };
 
-    return () => clearInterval(interval);
-  }, [user?.id]);
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [user?.id, refreshSummary]);
 
   const markOneRead = async (notificationId: string) => {
     try {
@@ -145,6 +166,7 @@ export const useNotifications = () => {
     unreadCount,
     loading,
     reload: loadInitialNotifications,
+    refreshSummary,
     markOneRead,
     markAllRead,
   };

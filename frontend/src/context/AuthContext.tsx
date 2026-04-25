@@ -14,6 +14,7 @@ import { getSocket, attachSocketUser } from "@/lib/socket";
 type AuthUser = {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
   role: "USER" | "CREATOR" | "ADMIN";
   plan: "FREE" | "STANDARD" | "PRO";
@@ -21,11 +22,14 @@ type AuthUser = {
   createdAt?: string;
   solvedCount?: number;
   streak?: number;
-   subscriptionActive?: boolean;
+  subscriptionStatus?: string | null;
+  currentPeriodEnd?: string | null;
+  subscriptionActive?: boolean;
+  isBlocked?: boolean;
 };
 
 type LoginPayload = {
-  email: string;
+  identifier: string;
   password: string;
   recaptchaToken: string;
 };
@@ -49,8 +53,42 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+const normalizeUser = (raw: any): AuthUser | null => {
+  if (!raw) return null;
+
+  const normalizedPlan = raw.plan || "FREE";
+  const normalizedSubscriptionStatus = raw.subscriptionStatus || null;
+  const normalizedCurrentPeriodEnd = raw.currentPeriodEnd || null;
+
+  const isPaidPlan =
+    normalizedPlan === "STANDARD" || normalizedPlan === "PRO";
+
+  const isSubscriptionActive =
+    isPaidPlan &&
+    (String(normalizedSubscriptionStatus || "").toUpperCase() === "ACTIVE" ||
+      (!!normalizedCurrentPeriodEnd &&
+        new Date(normalizedCurrentPeriodEnd).getTime() > Date.now()));
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    username: raw.username ?? null,
+    email: raw.email,
+    role: raw.role,
+    plan: normalizedPlan,
+    avatarUrl: raw.avatarUrl ?? null,
+    createdAt: raw.createdAt,
+    solvedCount: raw.solvedCount,
+    streak: raw.streak,
+    isBlocked:raw.isBlocked ?? false,
+    subscriptionStatus: normalizedSubscriptionStatus,
+    currentPeriodEnd: normalizedCurrentPeriodEnd,
+    subscriptionActive: isSubscriptionActive,
+  };
+};
+
 const extractUserFromResponse = (response: any): AuthUser | null => {
-  return response?.user || response?.data || null;
+  return normalizeUser(response?.user || response?.data || null);
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -101,11 +139,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (joinedUserIdRef.current && socket.connected) {
         socket.emit("leave", joinedUserIdRef.current);
       }
+
       joinedUserIdRef.current = null;
 
       if (socket.connected) {
         socket.disconnect();
       }
+
       return;
     }
 

@@ -54,7 +54,7 @@ export const createContestController = async (req, res, next) => {
   try {
     const contest = await createContestService({
       ...(req.validated?.body ?? req.body),
-      createdById: req.user.userId,
+      actorUserId: req.user.userId,
     });
 
     return res.status(201).json({
@@ -72,6 +72,7 @@ export const updateContestController = async (req, res, next) => {
     const contest = await updateContestService({
       contestId: req.validated?.params?.contestId ?? req.params.contestId,
       ...(req.validated?.body ?? req.body),
+      actorUserId: req.user.userId,
     });
 
     return res.status(200).json({

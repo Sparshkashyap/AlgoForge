@@ -2,6 +2,20 @@ import prisma from "../config/db.js";
 import { executionQueue } from "../queues/execution.queue.js";
 import { getLanguageId } from "./judge.service.js";
 
+/**
+ * 🔥 Safe Job ID Generator (BullMQ compatible)
+ */
+const safeJobId = (value) => {
+  return String(value || Date.now())
+    .replace(/:/g, "-")                    // remove colon
+    .replace(/[^a-zA-Z0-9_-]/g, "-")      // remove unsafe chars
+    .replace(/-+/g, "-")                  // collapse dashes
+    .slice(0, 180);                      // limit length
+};
+
+/**
+ * 🔐 Check premium access
+ */
 const checkAccess = (user, problem) => {
   return (
     !problem.isPremium ||
@@ -10,12 +24,16 @@ const checkAccess = (user, problem) => {
   );
 };
 
+/**
+ * 🚀 Create submission
+ */
 export const createSubmissionService = async ({
   problemId,
   language,
   code,
   userId,
 }) => {
+  // 👤 Get user
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, role: true, plan: true },
@@ -27,6 +45,7 @@ export const createSubmissionService = async ({
     throw error;
   }
 
+  // 📘 Get problem + testcases
   const problem = await prisma.problem.findFirst({
     where: {
       id: problemId,
@@ -47,18 +66,21 @@ export const createSubmissionService = async ({
     throw error;
   }
 
+  // 🔐 Premium check
   if (!checkAccess(user, problem)) {
     const error = new Error("Upgrade to a premium plan to access this problem");
     error.statusCode = 403;
     throw error;
   }
 
+  // ❗ Ensure testcases exist
   if (!problem.testCases.length) {
     const error = new Error("Problem has no test cases configured");
     error.statusCode = 400;
     throw error;
   }
 
+  // 📝 Create submission
   const submission = await prisma.submission.create({
     data: {
       userId,
@@ -84,19 +106,23 @@ export const createSubmissionService = async ({
     },
   });
 
+  // ⚙️ Queue execution (FIXED jobId)
   await executionQueue.add(
     "execute-submission",
     {
       submissionId: submission.id,
     },
     {
-      jobId: `submission:${submission.id}`,
+      jobId: safeJobId(`submission-${submission.id}`),
     }
   );
 
   return submission;
 };
 
+/**
+ * 📜 List user submissions
+ */
 export const listMySubmissionsService = async (userId) => {
   return prisma.submission.findMany({
     where: {
@@ -120,6 +146,9 @@ export const listMySubmissionsService = async (userId) => {
   });
 };
 
+/**
+ * 🔍 Get submission by ID
+ */
 export const getSubmissionByIdForUserService = async ({
   submissionId,
   userId,

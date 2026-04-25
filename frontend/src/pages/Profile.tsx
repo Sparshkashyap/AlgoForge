@@ -5,6 +5,7 @@ import {
   Award,
   Flame,
   CalendarDays,
+  AtSign,
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -19,6 +20,7 @@ import { useAuth } from "@/context/AuthContext";
 type ProfileData = {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
   role: string;
   plan: string;
@@ -33,11 +35,13 @@ export default function Profile() {
   const { refreshMe } = useAuth();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-  });
+  const [form, setForm] = useState({ name: "" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  const usernameLabel = profile?.username
+    ? `@${profile.username}`
+    : "@username-not-set";
 
   const memberSince = useMemo(() => {
     if (!profile?.createdAt) return "-";
@@ -51,9 +55,7 @@ export default function Profile() {
       const data = res?.data;
 
       setProfile(data);
-      setForm({
-        name: data?.name || "",
-      });
+      setForm({ name: data?.name || "" });
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Failed to load profile");
     } finally {
@@ -68,12 +70,9 @@ export default function Profile() {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const res = await updateMyProfileApi({
-        name: form.name,
-      });
+      const res = await updateMyProfileApi({ name: form.name });
 
-      const data = res?.data;
-      setProfile(data);
+      setProfile(res?.data);
       await refreshMe();
 
       toast.success("Profile updated");
@@ -128,7 +127,13 @@ export default function Profile() {
           <div className="flex flex-col gap-6 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <h1 className="text-3xl font-black md:text-4xl">Profile</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
+
+              <div className="mt-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary">
+                <AtSign className="h-4 w-4" />
+                {usernameLabel.replace("@", "")}
+              </div>
+
+              <p className="mt-3 text-sm text-muted-foreground">
                 Manage your identity, progress, and presence.
               </p>
 
@@ -148,7 +153,9 @@ export default function Profile() {
             <div className="grid gap-4 sm:grid-cols-3">
               <div className="metric-card">
                 <Award className="h-4 w-4 text-primary" />
-                <p className="text-3xl font-black">{profile.solvedCount || 0}</p>
+                <p className="text-3xl font-black">
+                  {profile.solvedCount || 0}
+                </p>
                 <p className="text-xs text-muted-foreground">Solved</p>
               </div>
 
@@ -174,11 +181,16 @@ export default function Profile() {
           onUpdated={handleAvatarUpdated}
         />
 
+        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+  <SolveHeatmap />
+
         <div className="rounded-[1.6rem] border border-border/70 bg-card/70 p-5">
           <div className="flex items-center gap-2">
             <UserCircle2 className="h-4 w-4 text-primary" />
             <p className="font-semibold">Edit profile</p>
           </div>
+
+
 
           <div className="mt-4 grid gap-4 md:grid-cols-2">
             <div>
@@ -213,7 +225,7 @@ export default function Profile() {
           </Button>
         </div>
 
-        <SolveHeatmap />
+        </div>
       </div>
     </div>
   );

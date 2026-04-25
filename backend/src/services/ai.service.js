@@ -1,22 +1,5 @@
-import { GoogleGenAI } from "@google/genai";
-import env from "../config/env.js";
 import prisma from "../config/db.js";
-
-let aiClient = null;
-
-if (env.GEMINI_API_KEY) {
-  aiClient = new GoogleGenAI({
-    apiKey: env.GEMINI_API_KEY,
-  });
-}
-
-const ensureAI = () => {
-  if (!aiClient) {
-    const error = new Error("Gemini is not configured");
-    error.statusCode = 500;
-    throw error;
-  }
-};
+import { generateAiText } from "./ai.provider.service.js";
 
 const parseJson = (text) => {
   try {
@@ -59,13 +42,17 @@ const extractJsonFromText = (text) => {
 const saveAIUsage = async ({ userId, feature, prompt }) => {
   if (!userId) return;
 
-  await prisma.aIUsage.create({
-    data: {
-      userId,
-      feature,
-      prompt,
-    },
-  });
+  try {
+    await prisma.aIUsage.create({
+      data: {
+        userId,
+        feature,
+        prompt,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to save AI usage:", error);
+  }
 };
 
 export const generateProblemCodePackService = async ({
@@ -76,45 +63,77 @@ export const generateProblemCodePackService = async ({
   referenceLanguage,
   referenceCode,
 }) => {
-  ensureAI();
-
   const prompt = `
-Return valid JSON only.
+Return valid JSON only. No markdown. No explanation.
 
-Generate these objects:
-1. languageTemplates
-2. referenceSolutions
-3. driverCode
+Generate this exact JSON shape:
+{
+  "languageTemplates": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "referenceSolutions": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "driverCode": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "",
+    "c": "..."
+  }
+}
 
 Supported languages:
 javascript, python, cpp, java, c
 
 Rules:
-- languageTemplates = user-facing boilerplate
-- referenceSolutions = correct accepted solutions
-- driverCode = hidden runner code
-- java reference/template should use:
+- languageTemplates = user-facing starter boilerplate only.
+- referenceSolutions = correct accepted solutions.
+- driverCode = hidden runner code that reads stdin and prints exact expected output.
+- For Java, template/reference should use:
 public class Main {
     public static String solve(String input) {
     }
 }
-- java driverCode should be empty string
+- Java driverCode should be empty string.
+- Keep output deterministic.
+- Do not include markdown fences.
+- Do not include comments outside code strings.
+- Escape newlines correctly inside JSON strings.
 
-Problem title: ${title}
-Problem description: ${description}
-Constraints: ${constraints || ""}
-Reference language: ${referenceLanguage}
+Problem title:
+${title}
+
+Problem description:
+${description}
+
+Constraints:
+${constraints || ""}
+
+Reference language:
+${referenceLanguage}
+
 Reference solution:
 ${referenceCode}
 `;
 
-  const response = await aiClient.models.generateContent({
-    model: env.GEMINI_MODEL,
-    contents: prompt,
+  const response = await generateAiText({
+    feature: "GENERATE_CODE_PACK",
+    temperature: 0.1,
+    system:
+      "You are a strict coding platform code-pack generator. You only return valid JSON.",
+    prompt,
   });
 
-  const text = response.text?.trim() || "";
-  const data = extractJsonFromText(text);
+  const data = extractJsonFromText(response.text);
 
   await saveAIUsage({
     userId,
@@ -131,23 +150,27 @@ export const generateHintService = async ({
   description,
   code,
 }) => {
-  ensureAI();
-
   const prompt = `
 You are a coding interview mentor.
 Give 3 short hints only.
-Do not give full solution.
+Do not give the full solution.
 
-Problem: ${title}
-Description: ${description}
+Problem:
+${title}
+
+Description:
+${description}
 
 User code:
 ${code}
 `;
 
-  const response = await aiClient.models.generateContent({
-    model: env.GEMINI_MODEL,
-    contents: prompt,
+  const response = await generateAiText({
+    feature: "AI_HINT",
+    temperature: 0.35,
+    system:
+      "You are a concise coding mentor. Help without revealing the full solution.",
+    prompt,
   });
 
   await saveAIUsage({
@@ -157,7 +180,7 @@ ${code}
   });
 
   return {
-    hint: response.text?.trim() || "No hint generated",
+    hint: response.text.trim() || "No hint generated",
   };
 };
 
@@ -168,29 +191,35 @@ export const reviewCodeService = async ({
   code,
   language,
 }) => {
-  ensureAI();
-
   const prompt = `
-You are reviewing a coding problem solution.
+Return valid JSON only. No markdown.
 
-Return concise feedback in JSON:
+JSON shape:
 {
   "summary": "...",
   "issues": ["..."],
   "improvements": ["..."]
 }
 
-Problem: ${title}
-Description: ${description}
-Language: ${language}
+Problem:
+${title}
+
+Description:
+${description}
+
+Language:
+${language}
 
 Code:
 ${code}
 `;
 
-  const response = await aiClient.models.generateContent({
-    model: env.GEMINI_MODEL,
-    contents: prompt,
+  const response = await generateAiText({
+    feature: "AI_REVIEW",
+    temperature: 0.2,
+    system:
+      "You are a senior coding reviewer. Return concise valid JSON only.",
+    prompt,
   });
 
   await saveAIUsage({
@@ -199,27 +228,13 @@ ${code}
     prompt: title,
   });
 
-  return extractJsonFromText(response.text?.trim() || "{}");
+  return extractJsonFromText(response.text || "{}");
 };
 
 export const basicAiExplainService = async ({ userId, code, language }) => {
-  if (!aiClient) {
-    return {
-      explanation: `Code analysis:
-Language: ${language}
-
-This solution works but may not be optimal.
-Try improving time complexity.
-
-Code:
-${code}`,
-    };
-  }
-
   const prompt = `
-You are a senior coding mentor.
-
 Explain the following code clearly and briefly.
+
 Focus on:
 - what the code is doing
 - the core approach
@@ -228,25 +243,31 @@ Focus on:
 
 Return plain text only.
 
-Language: ${language}
+Language:
+${language}
 
 Code:
 ${code}
 `;
 
-  const response = await aiClient.models.generateContent({
-    model: env.GEMINI_MODEL,
-    contents: prompt,
-  });
+  try {
+    const response = await generateAiText({
+      feature: "AI_EXPLAIN",
+      temperature: 0.3,
+      system: "You are a senior coding mentor.",
+      prompt,
+    });
 
-  await saveAIUsage({
-    userId,
-    feature: "AI_EXPLAIN",
-    prompt: language,
-  });
+    await saveAIUsage({
+      userId,
+      feature: "AI_EXPLAIN",
+      prompt: language,
+    });
 
-  return {
-    explanation: response.text?.trim() || `Code analysis:
+    return {
+      explanation:
+        response.text.trim() ||
+        `Code analysis:
 Language: ${language}
 
 This solution works but may not be optimal.
@@ -254,5 +275,17 @@ Try improving time complexity.
 
 Code:
 ${code}`,
-  };
+    };
+  } catch (error) {
+    return {
+      explanation: `Code analysis:
+Language: ${language}
+
+The AI provider is temporarily unavailable, so here is a basic fallback:
+This solution may work, but you should verify the parsing, edge cases, and time complexity.
+
+Code:
+${code}`,
+    };
+  }
 };

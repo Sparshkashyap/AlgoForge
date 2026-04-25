@@ -20,7 +20,8 @@ const buildProblemData = (payload, creatorUserId, slug) => ({
   languageTemplates: payload.languageTemplates,
   referenceSolutions: payload.referenceSolutions,
   driverCode: payload.driverCode,
-  isPublished: payload.isPublished ?? false,
+  reviewStatus: "DRAFT",
+isPublished: false,
   createdById: creatorUserId,
 });
 
@@ -74,21 +75,44 @@ export const getProblemBySlugService = async (slug, viewer = null) => {
 };
 
 export const createProblemService = async (payload, creatorUserId) => {
-  const slug = generateProblemSlug(payload.title);
+  const baseSlug = generateProblemSlug(payload.title);
 
-  const existing = await prisma.problem.findUnique({
-    where: { slug },
-  });
+  let slug = baseSlug;
+  let counter = 1;
 
-  if (existing) {
-    const error = new Error("Problem with same title/slug already exists");
-    error.statusCode = 409;
-    throw error;
+  // 🔥 AUTO UNIQUE SLUG GENERATION
+  while (true) {
+    const existing = await prisma.problem.findUnique({
+      where: { slug },
+    });
+
+    if (!existing) break;
+
+    slug = `${baseSlug}-${counter++}`;
   }
 
   const problem = await prisma.problem.create({
     data: {
-      ...buildProblemData(payload, creatorUserId, slug),
+      title: payload.title.trim(),
+      slug,
+      description: payload.description.trim(),
+      difficulty: payload.difficulty,
+      tags: payload.tags,
+      constraints: payload.constraints || null,
+      isPremium: payload.isPremium ?? false,
+      boilerplateMode: payload.boilerplateMode ?? "provided",
+      starterCode: payload.starterCode,
+      sampleInput: payload.sampleInput,
+      sampleOutput: payload.sampleOutput,
+      explanation: payload.explanation,
+      languageTemplates: payload.languageTemplates,
+      referenceSolutions: payload.referenceSolutions,
+      driverCode: payload.driverCode,
+      reviewStatus: "DRAFT",
+isPublished: false,
+
+      createdById: creatorUserId,
+
       testCases: {
         create: payload.testCases.map((tc) => ({
           input: tc.input,

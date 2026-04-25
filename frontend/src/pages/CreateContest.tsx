@@ -101,6 +101,19 @@ export default function CreateContest() {
       return;
     }
 
+    const start = new Date(form.startAt);
+    const end = new Date(form.endAt);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      toast.error("Invalid date format");
+      return;
+    }
+
+    if (end <= start) {
+      toast.error("End time must be after start time");
+      return;
+    }
+
     if (problemIds.length === 0) {
       toast.error("Select at least one problem");
       return;
@@ -109,8 +122,11 @@ export default function CreateContest() {
     try {
       setSaving(true);
 
+      // 🔥 CRITICAL FIX → convert to ISO
       const payload = {
         ...form,
+        startAt: start.toISOString(),
+        endAt: end.toISOString(),
         problemIds,
       };
 
@@ -152,8 +168,9 @@ export default function CreateContest() {
           <h1 className="text-3xl font-black">
             {isEdit ? "Edit Contest" : "Create Contest"}
           </h1>
+
           <p className="mt-2 text-sm text-muted-foreground">
-            Contest control is admin-only. Creator should not own this flow.
+            Admin controls contest visibility and schedule.
           </p>
 
           {loading ? (

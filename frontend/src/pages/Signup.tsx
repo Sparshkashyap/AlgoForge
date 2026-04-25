@@ -1,6 +1,7 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { motion } from "framer-motion";
+import ReCAPTCHA from "react-google-recaptcha";
 import {
   ArrowRight,
   BrainCircuit,
@@ -22,18 +23,6 @@ import { Label } from "@/components/ui/label";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "react-toastify";
 
-declare global {
-  interface Window {
-    grecaptcha?: {
-      ready: (cb: () => void) => void;
-      execute: (
-        siteKey: string,
-        options: { action: string }
-      ) => Promise<string>;
-    };
-  }
-}
-
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 const fadeUp = (delay = 0) => ({
@@ -45,76 +34,29 @@ const fadeUp = (delay = 0) => ({
 function GoogleIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-4 w-4" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.8-5.4 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2A9.8 9.8 0 0 0 2.2 12 9.8 9.8 0 0 0 12 21.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12Z"
-      />
-      <path
-        fill="#34A853"
-        d="M3.3 7.4 6.5 9.7C7.4 7.4 9.5 5.8 12 5.8c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2c-3.8 0-7.1 2.2-8.7 5.2Z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M2.2 12c0 1.5.4 2.9 1.1 4.2l3.7-2.9c-.2-.5-.3-.9-.3-1.3s.1-.9.3-1.3L3.3 7.4A9.7 9.7 0 0 0 2.2 12Z"
-      />
-      <path
-        fill="#4285F4"
-        d="M12 21.8c2.7 0 5-.9 6.7-2.5l-3.3-2.6c-.9.6-2 .9-3.4.9-2.5 0-4.6-1.6-5.4-3.8l-3.7 2.9c1.6 3.1 4.9 5.1 9.1 5.1Z"
-      />
+      <path fill="#EA4335" d="M12 10.2v3.9h5.4c-.2 1.3-1.5 3.8-5.4 3.8-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2A9.8 9.8 0 0 0 2.2 12 9.8 9.8 0 0 0 12 21.8c5.7 0 9.4-4 9.4-9.6 0-.6-.1-1.1-.2-1.6H12Z" />
+      <path fill="#34A853" d="M3.3 7.4 6.5 9.7C7.4 7.4 9.5 5.8 12 5.8c1.9 0 3.2.8 3.9 1.5l2.7-2.6C16.9 3.2 14.7 2.2 12 2.2c-3.8 0-7.1 2.2-8.7 5.2Z" />
+      <path fill="#FBBC05" d="M2.2 12c0 1.5.4 2.9 1.1 4.2l3.7-2.9c-.2-.5-.3-.9-.3-1.3s.1-.9.3-1.3L3.3 7.4A9.7 9.7 0 0 0 2.2 12Z" />
+      <path fill="#4285F4" d="M12 21.8c2.7 0 5-.9 6.7-2.5l-3.3-2.6c-.9.6-2 .9-3.4.9-2.5 0-4.6-1.6-5.4-3.8l-3.7 2.9c1.6 3.1 4.9 5.1 9.1 5.1Z" />
     </svg>
   );
 }
 
-function FloatingOrb({
-  className,
-  delay,
-}: {
-  className: string;
-  delay: number;
-}) {
+function FloatingOrb({ className, delay }: { className: string; delay: number }) {
   return (
     <motion.div
       className={className}
       animate={{ y: [0, -16, 0], rotate: [0, 5, 0] }}
-      transition={{
-        duration: 6,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay,
-      }}
+      transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay }}
     />
   );
 }
-
-const loadRecaptcha = () =>
-  new Promise<void>((resolve, reject) => {
-    if (window.grecaptcha) {
-      resolve();
-      return;
-    }
-
-    const existing = document.querySelector(
-      'script[src^="https://www.google.com/recaptcha/api.js"]'
-    );
-
-    if (existing) {
-      existing.addEventListener("load", () => resolve(), { once: true });
-      return;
-    }
-
-    const script = document.createElement("script");
-    script.src = `https://www.google.com/recaptcha/api.js?render=${RECAPTCHA_SITE_KEY}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("Failed to load reCAPTCHA"));
-    document.body.appendChild(script);
-  });
 
 export default function Signup() {
   const navigate = useNavigate();
   const location = useLocation();
   const { signup, isAuthenticated, loading } = useAuth();
+  const captchaRef = useRef<ReCAPTCHA | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -123,61 +65,43 @@ export default function Signup() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [recaptchaToken, setRecaptchaToken] = useState("");
 
-  const from =
-    (location.state as { from?: string } | null)?.from || "/dashboard";
-
-  useEffect(() => {
-    void loadRecaptcha().catch(() => {});
-  }, []);
+  const from = (location.state as { from?: string } | null)?.from || "/dashboard";
 
   if (!loading && isAuthenticated) {
     return <Navigate to={from} replace />;
   }
 
-  const getRecaptchaToken = async () => {
-    if (!RECAPTCHA_SITE_KEY) {
-      throw new Error("Missing VITE_RECAPTCHA_SITE_KEY");
-    }
-
-    await loadRecaptcha();
-
-    return new Promise<string>((resolve, reject) => {
-      window.grecaptcha?.ready(async () => {
-        try {
-          const token = await window.grecaptcha?.execute(RECAPTCHA_SITE_KEY, {
-            action: "signup",
-          });
-
-          if (!token) {
-            reject(new Error("reCAPTCHA token not generated"));
-            return;
-          }
-
-          resolve(token);
-        } catch (error) {
-          reject(error);
-        }
-      });
-    });
-  };
-
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (
+      !form.name.trim() ||
+      !form.email.trim() ||
+      !form.password.trim() ||
+      !recaptchaToken ||
+      submitting
+    ) {
+      return;
+    }
 
     try {
       setSubmitting(true);
 
-      const recaptchaToken = await getRecaptchaToken();
-
       await signup({
-        ...form,
+        name: form.name.trim(),
+        email: form.email.trim(),
+        password: form.password,
         recaptchaToken,
       });
 
       toast.success("Account created");
       navigate(from, { replace: true });
     } catch (error: any) {
+      captchaRef.current?.reset();
+      setRecaptchaToken("");
+
       toast.error(
         error?.response?.data?.message || error?.message || "Signup failed"
       );
@@ -188,18 +112,9 @@ export default function Signup() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <FloatingOrb
-        delay={0}
-        className="absolute left-10 top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl"
-      />
-      <FloatingOrb
-        delay={0.8}
-        className="absolute bottom-16 right-16 h-44 w-44 rounded-full bg-accent/10 blur-3xl"
-      />
-      <FloatingOrb
-        delay={1.4}
-        className="absolute left-1/2 top-1/3 h-24 w-24 rounded-full bg-pink-500/10 blur-2xl"
-      />
+      <FloatingOrb delay={0} className="absolute left-10 top-16 h-40 w-40 rounded-full bg-primary/10 blur-3xl" />
+      <FloatingOrb delay={0.8} className="absolute bottom-16 right-16 h-44 w-44 rounded-full bg-accent/10 blur-3xl" />
+      <FloatingOrb delay={1.4} className="absolute left-1/2 top-1/3 h-24 w-24 rounded-full bg-pink-500/10 blur-2xl" />
 
       <div className="container relative z-10 flex min-h-screen items-center py-10">
         <div className="grid w-full gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
@@ -218,8 +133,8 @@ export default function Signup() {
             </h1>
 
             <p className="mt-5 max-w-xl text-base leading-8 text-muted-foreground md:text-lg">
-              Signup pages should not be dead air. Show the workflow, prove the
-              value, and make the next screen feel worth reaching.
+              Signup pages should not be dead air. Show the workflow, prove the value,
+              and make the next screen feel worth reaching.
             </p>
 
             <div className="mt-8 spotlight-card overflow-hidden p-5 md:p-6">
@@ -265,8 +180,7 @@ export default function Signup() {
                         <Star className="h-4 w-4 text-accent" />
                       </div>
                       <p className="mt-3 text-sm leading-7 text-muted-foreground">
-                        Curated sets that feel like deliberate prep instead of
-                        random volume.
+                        Curated sets that feel like deliberate prep instead of random volume.
                       </p>
                     </div>
                   </div>
@@ -345,22 +259,12 @@ export default function Signup() {
                 </div>
 
                 <div className="mt-6 grid grid-cols-2 gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-white/15 hover:bg-zinc-950 hover:text-white dark:hover:bg-zinc-900"
-                    onClick={startGithubLogin}
-                  >
+                  <Button type="button" variant="outline" className="h-12 rounded-2xl border-border/70 bg-background/50" onClick={startGithubLogin} disabled={submitting}>
                     <Github className="mr-2 h-4 w-4" />
                     GitHub
                   </Button>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-12 rounded-2xl border-border/70 bg-background/50 text-foreground transition hover:border-blue-500 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:border-blue-400/40 dark:hover:bg-blue-500/10 dark:hover:text-blue-300"
-                    onClick={startGoogleLogin}
-                  >
+                  <Button type="button" variant="outline" className="h-12 rounded-2xl border-border/70 bg-background/50" onClick={startGoogleLogin} disabled={submitting}>
                     <GoogleIcon />
                     <span className="ml-2">Google</span>
                   </Button>
@@ -415,31 +319,42 @@ export default function Signup() {
                         className="h-12 rounded-2xl border-border/70 bg-background/50 pr-12"
                         value={form.password}
                         onChange={(e) =>
-                          setForm((prev) => ({
-                            ...prev,
-                            password: e.target.value,
-                          }))
+                          setForm((prev) => ({ ...prev, password: e.target.value }))
                         }
                         required
                       />
+
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition hover:text-foreground"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-5 w-5" />
-                        ) : (
-                          <Eye className="h-5 w-5" />
-                        )}
+                        {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                       </button>
                     </div>
                   </div>
 
+                  {RECAPTCHA_SITE_KEY ? (
+                    <div className="overflow-hidden rounded-2xl border border-border/70 bg-background/50 p-3">
+                      <ReCAPTCHA
+                        ref={captchaRef}
+                        sitekey={RECAPTCHA_SITE_KEY}
+                        onChange={(token) => setRecaptchaToken(token || "")}
+                        onExpired={() => setRecaptchaToken("")}
+                      />
+                    </div>
+                  ) : null}
+
                   <Button
                     className="group h-12 w-full rounded-2xl border-0 bg-primary text-primary-foreground shadow-[0_16px_40px_rgba(100,90,255,0.24)]"
                     type="submit"
-                    disabled={submitting}
+                    disabled={
+                      submitting ||
+                      !form.name.trim() ||
+                      !form.email.trim() ||
+                      !form.password.trim() ||
+                      !recaptchaToken
+                    }
                   >
                     {submitting ? (
                       <>
@@ -457,10 +372,7 @@ export default function Signup() {
 
                 <p className="mt-6 text-center text-sm text-muted-foreground">
                   Already have an account?{" "}
-                  <Link
-                    to="/login"
-                    className="font-medium text-primary transition hover:text-primary/80"
-                  >
+                  <Link to="/login" className="font-medium text-primary transition hover:text-primary/80">
                     Sign in
                   </Link>
                 </p>
@@ -469,8 +381,7 @@ export default function Signup() {
                   <div className="flex items-start gap-3">
                     <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                     <p className="text-sm leading-7 text-muted-foreground">
-                      Signup is protected with reCAPTCHA to reduce abuse and
-                      automated account creation.
+                      Signup is protected with reCAPTCHA to reduce abuse and automated account creation.
                     </p>
                   </div>
                 </div>

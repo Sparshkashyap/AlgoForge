@@ -1,28 +1,8 @@
 import prisma from "../config/db.js";
 import { dispatchNotificationEventService } from "./notification.service.js";
 
-export const listProblemsForReviewService = async () => {
-  return prisma.problem.findMany({
-    where: {
-      isPublished: false,
-    },
-    include: {
-      createdBy: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-};
-
-export const approveProblemService = async ({ problemId, actorUserId }) => {
-  const existing = await prisma.problem.findUnique({
+const ensureProblemExists = async (problemId) => {
+  const problem = await prisma.problem.findUnique({
     where: { id: problemId },
     select: {
       id: true,
@@ -33,11 +13,106 @@ export const approveProblemService = async ({ problemId, actorUserId }) => {
     },
   });
 
-  if (!existing) {
+  if (!problem) {
     const error = new Error("Problem not found");
     error.statusCode = 404;
     throw error;
   }
+
+  return problem;
+};
+
+export const listProblemsForReviewService = async () => {
+  return prisma.problem.findMany({
+    where: {
+      reviewStatus: "PENDING",
+      isPublished: false,
+    },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      testCases: {
+        select: {
+          id: true,
+          isHidden: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+};
+
+export const submitProblemForReviewService = async ({
+  problemId,
+  actorUserId,
+}) => {
+  const existing = await ensureProblemExists(problemId);
+
+  const actor = await prisma.user.findUnique({
+    where: { id: actorUserId },
+    select: {
+      id: true,
+      role: true,
+    },
+  });
+
+  const canSubmit =
+    actor?.role === "ADMIN" || existing.createdById === actorUserId;
+
+  if (!canSubmit) {
+    const error = new Error("You are not allowed to submit this problem");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  if (existing.isPublished) {
+    const error = new Error("Published problem cannot be submitted for review");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const problem = await prisma.problem.update({
+    where: { id: problemId },
+    data: {
+      reviewStatus: "PENDING",
+      reviewNotes: null,
+      isPublished: false,
+    },
+  });
+
+  await prisma.auditLog.create({
+    data: {
+      action: "PROBLEM_SUBMITTED_FOR_REVIEW",
+      actorUserId,
+      metadata: {
+        problemId,
+        problemTitle: existing.title,
+      },
+    },
+  });
+
+  await dispatchNotificationEventService({
+    event: "PROBLEM_SUBMITTED_FOR_REVIEW",
+    actorUserId,
+    payload: {
+      problemId,
+      problemTitle: existing.title,
+      creatorUserId: existing.createdById,
+    },
+  });
+
+  return problem;
+};
+
+export const approveProblemService = async ({ problemId, actorUserId }) => {
+  const existing = await ensureProblemExists(problemId);
 
   const problem = await prisma.problem.update({
     where: { id: problemId },
@@ -79,24 +154,9 @@ export const rejectProblemService = async ({
   actorUserId,
   reason,
 }) => {
-  const existing = await prisma.problem.findUnique({
-    where: { id: problemId },
-    select: {
-      id: true,
-      title: true,
-      createdById: true,
-      isPublished: true,
-      reviewStatus: true,
-    },
-  });
+  const existing = await ensureProblemExists(problemId);
 
-  if (!existing) {
-    const error = new Error("Problem not found");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const finalReason = reason || "Rejected by admin";
+  const finalReason = String(reason || "").trim() || "Rejected by admin";
 
   const problem = await prisma.problem.update({
     where: { id: problemId },

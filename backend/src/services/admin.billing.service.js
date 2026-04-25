@@ -14,6 +14,11 @@ export const listAllSubscriptionsForAdminService = async () => {
             in: ["STANDARD", "PRO"],
           },
         },
+        {
+          subscriptionStatus: {
+            not: null,
+          },
+        },
       ],
     },
     select: {
@@ -24,9 +29,11 @@ export const listAllSubscriptionsForAdminService = async () => {
       subscriptionStatus: true,
       currentPeriodEnd: true,
       razorpaySubscriptionId: true,
+      createdAt: true,
+      updatedAt: true,
     },
     orderBy: {
-      createdAt: "desc",
+      updatedAt: "desc",
     },
   });
 
@@ -37,6 +44,8 @@ export const listAllSubscriptionsForAdminService = async () => {
     status: user.subscriptionStatus || "INACTIVE",
     currentPeriodEnd: user.currentPeriodEnd,
     razorpaySubscriptionId: user.razorpaySubscriptionId,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
     user: {
       name: user.name,
       email: user.email,

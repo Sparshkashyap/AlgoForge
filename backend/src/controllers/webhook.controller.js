@@ -18,6 +18,34 @@ const verifySignature = (rawBody, signature) => {
   return digest === signature;
 };
 
+const sanitizeJobId = (value) => {
+  return String(value || Date.now())
+    .replace(/:/g, "-")
+    .replace(/[^a-zA-Z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .slice(0, 180);
+};
+
+const getSafeWebhookEventId = (payload) => {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const subscriptionId = payload?.payload?.subscription?.entity?.id;
+  const paymentId = payload?.payload?.payment?.entity?.id;
+  const invoiceId = payload?.payload?.invoice?.entity?.id;
+  const rootId = payload?.id;
+  const eventType = payload?.event || "unknown";
+
+  const baseId = subscriptionId || paymentId || invoiceId || rootId;
+
+  if (!baseId) {
+    return null;
+  }
+
+  return `${eventType}-${baseId}`;
+};
+
 export const razorpayWebhookController = async (req, res) => {
   try {
     const signature = req.headers["x-razorpay-signature"];
@@ -38,8 +66,17 @@ export const razorpayWebhookController = async (req, res) => {
     }
 
     const payload = JSON.parse(rawBody);
+    const eventId = getSafeWebhookEventId(payload);
 
-    const alreadyProcessed = await getPaymentAuditByEventIdService(payload.id);
+    if (!eventId) {
+      return res.status(400).json({
+        success: false,
+        message: "Webhook event id could not be derived",
+      });
+    }
+
+    const alreadyProcessed = await getPaymentAuditByEventIdService(eventId);
+
     if (alreadyProcessed) {
       return res.status(200).json({
         success: true,
@@ -48,15 +85,15 @@ export const razorpayWebhookController = async (req, res) => {
     }
 
     await createPaymentAuditService({
-      eventId: payload.id,
-      type: payload.event,
+      eventId,
+      type: payload.event || "unknown",
       payload,
       status: "RECEIVED",
     });
 
     try {
       await processRazorpayWebhookEventService(payload);
-      await markPaymentAuditProcessedService(payload.id);
+      await markPaymentAuditProcessedService(eventId);
 
       return res.status(200).json({
         success: true,
@@ -64,17 +101,19 @@ export const razorpayWebhookController = async (req, res) => {
       });
     } catch (error) {
       await markPaymentAuditFailedService({
-        eventId: payload.id,
+        eventId,
         errorMessage: error.message,
       });
+
+      const retryJobId = sanitizeJobId(`payment-retry-${eventId}`);
 
       await paymentQueue.add(
         "retry-payment-event",
         {
-          eventId: payload.id,
+          eventId,
         },
         {
-          jobId: `payment-retry:${payload.id}`,
+          jobId: retryJobId,
         }
       );
 
@@ -84,6 +123,8 @@ export const razorpayWebhookController = async (req, res) => {
       });
     }
   } catch (error) {
+    console.error("Unexpected Razorpay webhook error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Unexpected webhook error",

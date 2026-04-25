@@ -6,6 +6,8 @@ import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 import session from "express-session";
 import passport from "./config/passport.js";
+import cookieRoutes from "./routes/cookie.routes.js";
+
 
 import env from "./config/env.js";
 import prisma from "./config/db.js";
@@ -70,6 +72,10 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
+
+
+app.use("/api/cookies", cookieRoutes);
+
 
 // Razorpay webhook MUST come BEFORE json parser
 app.use(

@@ -1,14 +1,18 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams, Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
+  BookOpenText,
   Crown,
   Flame,
   Lock,
+  MessagesSquare,
   Sparkles,
+  Tag,
   TimerReset,
+  Zap,
 } from "lucide-react";
 import { Navbar } from "@/components/Navbar";
 import { getProblemBySlugApi, runProblemApi } from "@/api/problem.api";
@@ -19,11 +23,10 @@ import type { Submission } from "@/types/submission.types";
 import { fireCenterConfetti } from "@/components/ConfettiBurst";
 import ProblemWorkspace from "@/components/ProblemWorkspace";
 import { useSubmission } from "@/hooks/useSubmission";
-
 import ProblemDiscussions from "@/components/ProblemDiscussions";
 import ProblemNotes from "@/components/ProblemNotes";
-
 import { toggleBookmarkApi } from "@/api/bookmark.api";
+import BookmarkButton from "@/components/BookmarkButton";
 import { Button } from "@/components/ui/button";
 
 type SupportedLanguage = "javascript" | "python" | "cpp" | "java" | "c";
@@ -90,11 +93,25 @@ const isFinalSubmissionState = (item?: Submission | null) => {
   return ["COMPLETED", "FAILED"].includes(status);
 };
 
+function scrollToSection(ref: React.RefObject<HTMLDivElement>) {
+  ref.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}
+
 export default function ProblemDetails() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth();
+
+  const workspaceRef = useRef<HTMLDivElement>(null);
+  const notesRef = useRef<HTMLDivElement>(null);
+  const discussionsRef = useRef<HTMLDivElement>(null);
+
+
+
 
   const [problem, setProblem] = useState<Problem | null>(null);
   const [language, setLanguage] = useState<SupportedLanguage>("javascript");
@@ -114,9 +131,13 @@ export default function ProblemDetails() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [isBookmarked, setIsBookmarked] = useState(false);
 
   const [timerSeconds, setTimerSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+
+  const [customInput, setCustomInput] = useState("");
+const [customExpectedOutput, setCustomExpectedOutput] = useState("");
 
   const liveSubmission = useSubmission(queuedSubmissionId).submission;
 
@@ -136,6 +157,43 @@ export default function ProblemDetails() {
   const acceptedCount = useMemo(() => {
     return previousSubmissions.filter(isAccepted).length;
   }, [previousSubmissions]);
+
+  const visibleCasesCount = useMemo(() => {
+    return (problem?.testCases || []).filter((item) => !item?.isHidden).length;
+  }, [problem]);
+
+  const totalTags = useMemo(() => {
+    return Array.isArray(problem?.tags) ? problem?.tags.length : 0;
+  }, [problem]);
+
+  const quickStats = useMemo(() => {
+    return [
+      {
+        label: "Session timer",
+        value: formatTimer(timerSeconds),
+        icon: <TimerReset className="h-5 w-5 text-primary" />,
+        hint: timerRunning ? "Running" : "Paused",
+      },
+      {
+        label: "Accepted",
+        value: String(acceptedCount),
+        icon: <Flame className="h-5 w-5 text-primary" />,
+        hint: "Your solved attempts",
+      },
+      {
+        label: "Language",
+        value: language.toUpperCase(),
+        icon: <Zap className="h-5 w-5 text-accent" />,
+        hint: "Current editor mode",
+      },
+      {
+        label: "Samples",
+        value: String(visibleCasesCount),
+        icon: <BookOpenText className="h-5 w-5 text-primary" />,
+        hint: "Visible test cases",
+      },
+    ];
+  }, [acceptedCount, language, timerRunning, timerSeconds, visibleCasesCount]);
 
   useEffect(() => {
     if (!timerRunning) return;
@@ -339,6 +397,20 @@ export default function ProblemDetails() {
     });
   };
 
+  const handleToggleBookmark = async () => {
+    if (!problem?.id) return;
+
+    if (!user) {
+      navigate("/login", {
+        state: { from: location.pathname },
+      });
+      return;
+    }
+
+    const response = await toggleBookmarkApi(problem.id);
+    setIsBookmarked(!!response?.data?.bookmarked);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background text-foreground">
@@ -365,34 +437,6 @@ export default function ProblemDetails() {
     );
   }
 
-
-
-
-const toggleBookmark = async () => {
-  if (!problem?.id) return;
-
-  if (!user) {
-    navigate("/login", {
-      state: { from: location.pathname },
-    });
-    return;
-  }
-
-  try {
-    const res = await toggleBookmarkApi(problem.id);
-
-    toast.success(
-      res.data?.bookmarked
-        ? "Added to bookmarks"
-        : "Removed from bookmarks"
-    );
-  } catch (error: any) {
-    toast.error(
-      error?.response?.data?.message || "Failed to update bookmark"
-    );
-  }
-};
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Navbar />
@@ -403,163 +447,244 @@ const toggleBookmark = async () => {
         transition={{ duration: 0.25 }}
         className="container py-6 md:py-8"
       >
-        <div className="mb-5 grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="spotlight-card overflow-hidden p-5 md:p-6">
-            <div className="feature-glow absolute inset-0 opacity-80" />
-            <div className="relative z-10">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
+        <div className="mb-6 overflow-hidden rounded-[2rem] border border-border/70 bg-card/75 shadow-[0_30px_80px_rgba(0,0,0,0.18)] backdrop-blur-2xl">
+          <div className="feature-glow absolute inset-0 opacity-80" />
+
+          <div className="relative z-10 p-5 md:p-6 xl:p-7">
+            <div className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+              <div className="rounded-[1.7rem] border border-white/10 bg-background/60 p-5 md:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <Link
                     to="/problems"
-                    className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-foreground"
+                    className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/65 px-4 py-2 text-sm text-muted-foreground transition hover:text-foreground"
                   >
                     <ArrowLeft className="h-4 w-4" />
                     Back to problem bank
                   </Link>
 
-                  <div className="mt-4 flex flex-wrap items-center gap-2">
-                    <span
-                      className={`rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
-                        problem.difficulty === "Easy"
-                          ? "bg-emerald-500/12 text-emerald-400"
-                          : problem.difficulty === "Medium"
-                            ? "bg-amber-500/12 text-amber-400"
-                            : "bg-rose-500/12 text-rose-400"
-                      }`}
-                    >
-                      {problem.difficulty}
+                  <div className="rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                    {user ? "Signed in" : "Guest mode"}
+                  </div>
+                </div>
+
+                <div className="mt-5 flex flex-wrap items-center gap-2">
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                      problem.difficulty === "Easy"
+                        ? "border-emerald-500/20 bg-emerald-500/12 text-emerald-400"
+                        : problem.difficulty === "Medium"
+                          ? "border-amber-500/20 bg-amber-500/12 text-amber-400"
+                          : "border-rose-500/20 bg-rose-500/12 text-rose-400"
+                    }`}
+                  >
+                    {problem.difficulty}
+                  </span>
+
+                  {problem.isPremium ? (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-yellow-400">
+                      <Crown className="h-3.5 w-3.5" />
+                      Premium
                     </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-primary">
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Public
+                    </span>
+                  )}
 
-                    {problem.isPremium && (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-yellow-500/20 bg-yellow-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-yellow-400">
-                        <Crown className="h-3.5 w-3.5" />
-                        Premium
-                      </span>
-                    )}
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/65 px-3 py-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    <Tag className="h-3.5 w-3.5" />
+                    {totalTags} tags
+                  </span>
 
-                    {problem.tags?.slice(0, 3).map((tag) => (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-border/70 bg-background/65 px-3 py-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
+                    <BookOpenText className="h-3.5 w-3.5" />
+                    {visibleCasesCount} samples
+                  </span>
+                </div>
+
+                <h1 className="mt-5 max-w-4xl font-heading text-3xl font-black leading-tight md:text-5xl">
+                  {problem.title}
+                </h1>
+
+                <p className="mt-4 max-w-3xl text-sm leading-8 text-muted-foreground md:text-base">
+                  Solve inside a real split workspace, switch between
+                  description, submissions, solutions, and editorial, and use the
+                  right-side workbench for samples and execution results.
+                </p>
+
+                {!!problem.tags?.length && (
+                  <div className="mt-5 flex flex-wrap gap-2">
+                    {problem.tags.map((tag) => (
                       <span
                         key={tag}
-                        className="rounded-full border border-border/70 bg-background/55 px-3 py-1 text-xs uppercase tracking-[0.14em] text-muted-foreground"
+                        className="rounded-full border border-border/70 bg-background/65 px-3 py-1 text-xs uppercase tracking-[0.14em] text-muted-foreground"
                       >
                         {tag}
                       </span>
                     ))}
                   </div>
+                )}
 
-                  <h1 className="mt-4 font-heading text-3xl font-black leading-tight md:text-5xl">
-                    {problem.title}
-                  </h1>
+                <div className="mt-6 flex flex-wrap items-center gap-3">
+                  <Button
+                    type="button"
+                    className="rounded-xl"
+                    onClick={() => scrollToSection(workspaceRef)}
+                  >
+                    Start solving
+                  </Button>
 
-                  <div className="mt-4">
-                    <Button className="rounded-xl" onClick={toggleBookmark}>
-                      Bookmark
-                    </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-border/70 bg-background/60"
+                    onClick={() => scrollToSection(notesRef)}
+                  >
+                    Open notes
+                  </Button>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="rounded-xl border-border/70 bg-background/60"
+                    onClick={() => scrollToSection(discussionsRef)}
+                  >
+                    Open discussion
+                  </Button>
+
+                  <BookmarkButton
+                    isBookmarked={isBookmarked}
+                    onToggle={handleToggleBookmark}
+                  />
+                </div>
+
+                {blockedPremium ? (
+                  <div className="mt-6 rounded-[1.3rem] border border-yellow-500/20 bg-yellow-500/10 p-4 text-sm text-yellow-300">
+                    <div className="flex items-start gap-3">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0" />
+                      <div>
+                        <p className="font-semibold">Premium problem locked</p>
+                        <p className="mt-1 text-yellow-200/80">
+                          You can inspect the problem, but running and submitting
+                          require premium access.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+                {quickStats.map((item) => (
+                  <div
+                    key={item.label}
+                    className="rounded-[1.6rem] border border-white/10 bg-background/60 p-5"
+                  >
+                    <div className="flex items-center justify-between">
+                      {item.icon}
+                      <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                        {item.hint}
+                      </span>
+                    </div>
+
+                    <p className="mt-4 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      {item.label}
+                    </p>
+                    <p className="mt-2 font-heading text-3xl font-black">
+                      {item.value}
+                    </p>
+                  </div>
+                ))}
+
+                <div className="rounded-[1.6rem] border border-white/10 bg-background/60 p-5 sm:col-span-2 xl:col-span-1">
+                  <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                    Quick navigation
+                  </p>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(workspaceRef)}
+                      className="rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-primary transition hover:bg-primary/15"
+                    >
+                      Workspace
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(notesRef)}
+                      className="rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+                    >
+                      Notes
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => scrollToSection(discussionsRef)}
+                      className="rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground transition hover:text-foreground"
+                    >
+                      Discussions
+                    </button>
                   </div>
 
-                  <p className="mt-3 max-w-3xl text-sm leading-8 text-muted-foreground md:text-base">
-                    Work through the prompt, use the workspace properly, and
-                    keep your progress visible. This page should feel like the
-                    core of the platform, not an afterthought around the editor.
-                  </p>
+                  <div className="mt-5 rounded-[1.2rem] border border-border/70 bg-card/70 p-4">
+                    <div className="flex items-start gap-3">
+                      <MessagesSquare className="mt-0.5 h-4 w-4 text-primary" />
+                      <div>
+                        <p className="font-medium">Better solving flow</p>
+                        <p className="mt-1 text-sm leading-7 text-muted-foreground">
+                          Header stays focused on context while the workspace below
+                          handles coding, samples, results, solutions, notes, and
+                          discussion.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-
-                <div className="rounded-full border border-border/70 bg-background/60 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                  {user ? "Signed in" : "Guest mode"}
-                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1">
-            <div className="metric-card">
-              <div className="flex items-center justify-between">
-                <TimerReset className="h-5 w-5 text-primary" />
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Session
-                </span>
-              </div>
-              <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Timer
-              </p>
-              <p className="mt-2 font-heading text-3xl font-black">
-                {formatTimer(timerSeconds)}
-              </p>
-            </div>
-
-            <div className="metric-card">
-              <div className="flex items-center justify-between">
-                <Sparkles className="h-5 w-5 text-accent" />
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Drafts
-                </span>
-              </div>
-              <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Current language
-              </p>
-              <p className="mt-2 font-heading text-3xl font-black capitalize">
-                {language}
-              </p>
-            </div>
-
-            <div className="metric-card">
-              <div className="flex items-center justify-between">
-                <Flame className="h-5 w-5 text-primary" />
-                <span className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-                  Attempts
-                </span>
-              </div>
-              <p className="mt-4 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-                Accepted
-              </p>
-              <p className="mt-2 font-heading text-3xl font-black">
-                {acceptedCount}
-              </p>
             </div>
           </div>
         </div>
 
-        {blockedPremium && (
-          <div className="mb-5 rounded-[1.4rem] border border-yellow-500/20 bg-yellow-500/10 px-5 py-4 text-sm text-yellow-300">
-            <div className="flex items-start gap-3">
-              <Lock className="mt-0.5 h-4 w-4 shrink-0" />
-              <div>
-                <p className="font-semibold">Premium problem locked</p>
-                <p className="mt-1 text-yellow-200/80">
-                  You can view the shell, but running and submitting this
-                  problem requires premium access.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
-        <ProblemWorkspace
-          problem={problem}
-          language={language}
-          setLanguage={handleLanguageChange}
-          code={currentCode}
-          setCode={handleCodeChange}
-          running={running}
-          submitting={submitting}
-          blockedPremium={!!blockedPremium}
-          timerRunning={timerRunning}
-          timerSeconds={timerSeconds}
-          onTimerToggle={handleTimerToggle}
-          onTimerReset={handleTimerReset}
-          onRun={handleRun}
-          onSubmit={handleSubmit}
-          runResult={runResult}
-          submission={submission}
-          previousSubmissions={previousSubmissions}
-          userExists={!!user}
-        />
+        <div ref={workspaceRef}>
+          <ProblemWorkspace
+          customInput={customInput}
+setCustomInput={setCustomInput}
+customExpectedOutput={customExpectedOutput}
+setCustomExpectedOutput={setCustomExpectedOutput}
+            problem={problem}
+            language={language}
+            setLanguage={handleLanguageChange}
+            code={currentCode}
+            setCode={handleCodeChange}
+            running={running}
+            submitting={submitting}
+            blockedPremium={!!blockedPremium}
+            timerRunning={timerRunning}
+            timerSeconds={timerSeconds}
+            onTimerToggle={handleTimerToggle}
+            onTimerReset={handleTimerReset}
+            onRun={handleRun}
+            onSubmit={handleSubmit}
+            runResult={runResult}
+            submission={submission}
+            previousSubmissions={previousSubmissions}
+            userExists={!!user}
+          />
+        </div>
 
         <div className="mt-8 grid gap-6 xl:grid-cols-2">
-  {problem?.id && <ProblemNotes problemId={problem.id} />}
-  {problem?.id && <ProblemDiscussions problemId={problem.id} />}
-</div>
+          <div ref={notesRef}>
+            {problem?.id ? <ProblemNotes problemId={problem.id} /> : null}
+          </div>
+
+          <div ref={discussionsRef}>
+            {problem?.id ? <ProblemDiscussions problemId={problem.id} /> : null}
+          </div>
+        </div>
       </motion.div>
     </div>
   );
-}
+} 

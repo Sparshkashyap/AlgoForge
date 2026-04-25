@@ -2,6 +2,7 @@ import {
   approveProblemService,
   listProblemsForReviewService,
   rejectProblemService,
+  submitProblemForReviewService,
 } from "../services/problem.review.service.js";
 
 export const listProblemsForReviewController = async (_req, res, next) => {
@@ -10,6 +11,23 @@ export const listProblemsForReviewController = async (_req, res, next) => {
 
     return res.status(200).json({
       success: true,
+      data,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const submitProblemForReviewController = async (req, res, next) => {
+  try {
+    const data = await submitProblemForReviewService({
+      problemId: req.params.problemId,
+      actorUserId: req.user.userId,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Problem submitted for review",
       data,
     });
   } catch (error) {

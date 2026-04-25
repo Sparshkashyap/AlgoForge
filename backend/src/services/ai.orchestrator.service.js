@@ -1,7 +1,7 @@
 import { detectAiIntentService } from "./ai.intent.service.js";
 import { buildAiContextService } from "./ai.context.service.js";
 import { retrieveAiContextChunksService } from "./ai.rag.service.js";
-import { generateGeminiAnswerService } from "./ai.gemini.service.js";
+import { generateAiAnswerService } from "./ai.answer.service.js";
 
 const buildSuggestedPrompts = ({ role, intent, roleAwareContext }) => {
   if (role === "ADMIN") {
@@ -73,7 +73,7 @@ export const askAiAssistantService = async ({
     intent: intentResult.intent,
   });
 
-  const generated = await generateGeminiAnswerService({
+  const generated = await generateAiAnswerService({
     message,
     history,
     role,
@@ -88,6 +88,7 @@ export const askAiAssistantService = async ({
       role,
       intent: intentResult.intent,
       confidence: intentResult.confidence,
+      provider: generated.provider,
       model: generated.model,
       usedFallback: generated.usedFallback,
       retrievedChunkCount: retrievedChunks.chunks.length,
@@ -108,7 +109,8 @@ export const askAiAssistantService = async ({
     contextPreview: {
       weakTags: roleAwareContext?.roleContext?.summary?.weakTags || [],
       strongTags: roleAwareContext?.roleContext?.summary?.strongTags || [],
-      recentProblems: roleAwareContext?.shared?.recentProblems?.slice(0, 5) || [],
+      recentProblems:
+        roleAwareContext?.shared?.recentProblems?.slice(0, 5) || [],
     },
   };
 };

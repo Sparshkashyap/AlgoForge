@@ -8,7 +8,7 @@ export type SignupPayload = {
 };
 
 export type LoginPayload = {
-  email: string;
+  identifier: string;
   password: string;
   recaptchaToken: string;
 };

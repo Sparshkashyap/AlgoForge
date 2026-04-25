@@ -15,44 +15,47 @@ const verdictClasses: Record<
   {
     badge: string;
     icon: JSX.Element;
-    tone: string;
     description: string;
   }
 > = {
   Accepted: {
     badge: "text-emerald-400 border-emerald-500/20 bg-emerald-500/10",
     icon: <CheckCircle2 className="h-4 w-4 text-emerald-400" />,
-    tone: "Accepted",
     description: "Your solution passed all evaluated test cases.",
   },
   "Wrong Answer": {
     badge: "text-amber-400 border-amber-500/20 bg-amber-500/10",
     icon: <AlertTriangle className="h-4 w-4 text-amber-400" />,
-    tone: "Wrong Answer",
     description: "The code ran, but at least one test case failed.",
   },
   "Runtime Error": {
     badge: "text-rose-400 border-rose-500/20 bg-rose-500/10",
     icon: <XCircle className="h-4 w-4 text-rose-400" />,
-    tone: "Runtime Error",
     description: "Execution failed while running the submitted program.",
   },
   "Compilation Error": {
     badge: "text-rose-400 border-rose-500/20 bg-rose-500/10",
     icon: <XCircle className="h-4 w-4 text-rose-400" />,
-    tone: "Compilation Error",
     description: "The program could not compile successfully.",
   },
   Pending: {
     badge: "text-sky-400 border-sky-500/20 bg-sky-500/10",
     icon: <Clock3 className="h-4 w-4 text-sky-400" />,
-    tone: "Pending",
     description: "The result is still being processed.",
+  },
+  QUEUED: {
+    badge: "text-sky-400 border-sky-500/20 bg-sky-500/10",
+    icon: <Clock3 className="h-4 w-4 text-sky-400" />,
+    description: "Your submission is waiting to be processed.",
+  },
+  PROCESSING: {
+    badge: "text-sky-400 border-sky-500/20 bg-sky-500/10",
+    icon: <Clock3 className="h-4 w-4 text-sky-400" />,
+    description: "Your code is being evaluated right now.",
   },
   "Internal Error": {
     badge: "text-rose-400 border-rose-500/20 bg-rose-500/10",
     icon: <XCircle className="h-4 w-4 text-rose-400" />,
-    tone: "Internal Error",
     description: "Something failed on the evaluation side.",
   },
 };
@@ -64,7 +67,6 @@ function getVerdictMeta(verdict?: string, status?: string) {
     verdictClasses[key] || {
       badge: "text-foreground border-border bg-muted",
       icon: <Clock3 className="h-4 w-4 text-muted-foreground" />,
-      tone: key,
       description: "Execution finished with a non-standard response.",
     }
   );
@@ -110,7 +112,7 @@ function OutputSection({
       >
         {title}
       </p>
-      <pre className="overflow-x-auto rounded-[1rem] border border-border/60 bg-card/70 p-4 text-sm leading-7 text-foreground/92 whitespace-pre-wrap">
+      <pre className="overflow-x-auto whitespace-pre-wrap rounded-[1rem] border border-border/60 bg-card/70 p-4 text-sm leading-7 text-foreground/92">
         {value}
       </pre>
     </div>
@@ -187,9 +189,7 @@ export default function SubmissionResult({
       </div>
 
       <div className="mt-5 space-y-4">
-        {result.stdout ? (
-          <OutputSection title="Stdout" value={result.stdout} />
-        ) : null}
+        {result.stdout ? <OutputSection title="Stdout" value={result.stdout} /> : null}
 
         {result.stderr ? (
           <OutputSection title="Stderr" value={result.stderr} danger />

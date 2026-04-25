@@ -13,7 +13,7 @@ export const signupSchema = z.object({
 
 export const loginSchema = z.object({
   body: z.object({
-    email: z.string().trim().email(),
+    identifier: z.string().trim().min(1, "Email or username is required"),
     password: z.string().min(1),
     recaptchaToken: z.string().min(1, "reCAPTCHA token is required"),
   }),
@@ -58,14 +58,16 @@ export const verifyPasswordResetOtpSchema = z.object({
 });
 
 export const resetPasswordWithOtpVerificationSchema = z.object({
-  body: z.object({
-    verificationToken: z.string().min(1),
-    password: z.string().min(6),
-    confirmPassword: z.string().min(6),
-  }).refine((data) => data.password === data.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  }),
+  body: z
+    .object({
+      verificationToken: z.string().min(1),
+      password: z.string().min(6),
+      confirmPassword: z.string().min(6),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords do not match",
+      path: ["confirmPassword"],
+    }),
   params: z.object({}),
   query: z.object({}),
 });

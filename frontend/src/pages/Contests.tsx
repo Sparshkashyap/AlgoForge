@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { CalendarDays, Trophy, Users, Clock3 } from "lucide-react";
+import {
+  CalendarDays,
+  Trophy,
+  Users,
+  Clock3,
+  PlusCircle,
+  Settings,
+} from "lucide-react";
 import { toast } from "react-toastify";
 
 import { Navbar } from "@/components/Navbar";
 import { listContestsApi } from "@/api/contest.api";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 type Contest = {
   id: string;
@@ -30,12 +38,31 @@ const getContestStatus = (startAt: string, endAt: string) => {
   const start = new Date(startAt).getTime();
   const end = new Date(endAt).getTime();
 
+  if (Number.isNaN(start) || Number.isNaN(end)) return "Invalid";
   if (now < start) return "Upcoming";
   if (now >= start && now <= end) return "Live";
   return "Ended";
 };
 
+// 🔥 clean formatter
+const formatDateTime = (date: string) => {
+  const d = new Date(date);
+
+  return `${d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })} at ${d.toLocaleTimeString("en-IN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  })}`;
+};
+
 export default function Contests() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
+
   const [items, setItems] = useState<Contest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,14 +99,28 @@ export default function Contests() {
     };
   }, [items]);
 
+  const renderEmpty = () => (
+    <div className="rounded-2xl border border-dashed border-border bg-card/70 p-6 text-sm text-muted-foreground">
+      <p className="font-medium text-foreground">No contests here yet.</p>
+      <p className="mt-1">
+        {isAdmin
+          ? "Create and publish a contest to make it visible here."
+          : "Check back later for new contests."}
+      </p>
+
+      {isAdmin && (
+        <Button asChild className="mt-4 rounded-xl">
+          <Link to="/create-contest">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Contest
+          </Link>
+        </Button>
+      )}
+    </div>
+  );
+
   const renderList = (list: Contest[]) => {
-    if (list.length === 0) {
-      return (
-        <div className="rounded-2xl border border-border bg-card p-5 text-sm text-muted-foreground">
-          Nothing here.
-        </div>
-      );
-    }
+    if (list.length === 0) return renderEmpty();
 
     return (
       <div className="grid gap-4">
@@ -89,7 +130,7 @@ export default function Contests() {
           return (
             <div
               key={contest.id}
-              className="rounded-[1.5rem] border border-border/70 bg-card/60 p-5"
+              className="rounded-[1.5rem] border border-border/70 bg-card/60 p-5 transition hover:border-primary/40 hover:shadow-lg"
             >
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
@@ -116,12 +157,12 @@ export default function Contests() {
                   <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted-foreground">
                     <span className="inline-flex items-center gap-2">
                       <Clock3 className="h-4 w-4" />
-                      Starts: {new Date(contest.startAt).toLocaleString()}
+                      Start: {formatDateTime(contest.startAt)}
                     </span>
 
                     <span className="inline-flex items-center gap-2">
                       <CalendarDays className="h-4 w-4" />
-                      Ends: {new Date(contest.endAt).toLocaleString()}
+                      End: {formatDateTime(contest.endAt)}
                     </span>
 
                     <span className="inline-flex items-center gap-2">
@@ -153,19 +194,43 @@ export default function Contests() {
 
       <div className="container py-12 md:py-16">
         <div className="rounded-[2rem] border border-border/70 bg-card/60 p-6 md:p-8">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/50 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
-            <Trophy className="h-3.5 w-3.5 text-primary" />
-            Contests
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/50 px-4 py-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+                <Trophy className="h-3.5 w-3.5 text-primary" />
+                Contests
+              </div>
+
+              <h1 className="mt-6 font-heading text-4xl font-black leading-tight md:text-5xl">
+                Compete with a clear schedule.
+              </h1>
+
+              <p className="mt-4 max-w-2xl text-sm leading-8 text-muted-foreground">
+                See live, upcoming, and ended contests in one place.
+              </p>
+            </div>
+
+            {isAdmin && (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  asChild
+                  className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700"
+                >
+                  <Link to="/create-contest">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Contest
+                  </Link>
+                </Button>
+
+                <Button asChild variant="outline" className="rounded-xl">
+                  <Link to="/manage-contests">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Manage
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
-
-          <h1 className="mt-6 font-heading text-4xl font-black leading-tight md:text-5xl">
-            Compete with a clear schedule.
-          </h1>
-
-          <p className="mt-4 max-w-2xl text-sm leading-8 text-muted-foreground">
-            Contest pages should immediately show what is live, what is upcoming,
-            and what is already done. Hidden state is bad product.
-          </p>
         </div>
 
         <div className="mt-8 space-y-10">
@@ -184,12 +249,28 @@ export default function Contests() {
 
           <section>
             <h2 className="text-2xl font-black">Upcoming</h2>
-            <div className="mt-4">{renderList(grouped.upcoming)}</div>
+            <div className="mt-4">
+              {loading ? (
+                <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                  Loading contests...
+                </div>
+              ) : (
+                renderList(grouped.upcoming)
+              )}
+            </div>
           </section>
 
           <section>
             <h2 className="text-2xl font-black">Ended</h2>
-            <div className="mt-4">{renderList(grouped.ended)}</div>
+            <div className="mt-4">
+              {loading ? (
+                <div className="rounded-3xl border border-border bg-card p-6 text-sm text-muted-foreground">
+                  Loading contests...
+                </div>
+              ) : (
+                renderList(grouped.ended)
+              )}
+            </div>
           </section>
         </div>
       </div>

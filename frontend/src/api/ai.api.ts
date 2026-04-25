@@ -75,6 +75,6 @@ export const askAiAssistantApi = async (
   message: string,
   history: AiHistoryMessage[] = []
 ): Promise<AiChatResponse> => {
-  const response = await API.post("/ai/chat", { message, history });
+  const response = await API.post("/ai/ai-chat", { message, history });
   return response.data;
 };

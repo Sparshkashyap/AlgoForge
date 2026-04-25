@@ -5,6 +5,7 @@ export type UserPlan = "FREE" | "STANDARD" | "PRO";
 export type User = {
   id: string;
   name: string;
+  username?: string | null;
   email: string;
   role: UserRole;
   plan: UserPlan;
@@ -15,4 +16,8 @@ export type User = {
   isBlocked?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  _count?: {
+    submissions: number;
+    problems: number;
+  };
 };

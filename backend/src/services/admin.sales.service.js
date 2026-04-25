@@ -20,11 +20,16 @@ export const getSalesChartService = async () => {
   const buckets = new Map();
 
   for (const user of users) {
-    const key = new Date(user.createdAt).toISOString().slice(0, 7);
+    const date = new Date(user.createdAt);
+
+    const year = date.getFullYear();
+    const month = date.getMonth(); // 0-based month
+    const key = `${year}-${month}`;
 
     if (!buckets.has(key)) {
       buckets.set(key, {
-        month: key,
+        year,
+        month,
         STANDARD: 0,
         PRO: 0,
         revenue: 0,
@@ -44,5 +49,8 @@ export const getSalesChartService = async () => {
     }
   }
 
-  return [...buckets.values()];
+  return [...buckets.values()].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return a.month - b.month;
+  });
 };

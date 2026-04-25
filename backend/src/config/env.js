@@ -41,15 +41,41 @@ const env = {
     process.env.PASSWORD_RESET_BASE_URL ||
     "http://localhost:5173/reset-password",
 
-  RAZORPAY_KEY: process.env.RAZORPAY_KEY || "",
-  RAZORPAY_SECRET: process.env.RAZORPAY_SECRET || "",
+  RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID || "",
+  RAZORPAY_KEY_SECRET: process.env.RAZORPAY_KEY_SECRET || "",
   RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET || "",
   RAZORPAY_STANDARD_PLAN_ID: process.env.RAZORPAY_STANDARD_PLAN_ID || "",
   RAZORPAY_PRO_PLAN_ID: process.env.RAZORPAY_PRO_PLAN_ID || "",
 
+  AI_PROVIDER:
+    process.env.AI_PROVIDER ||
+    (process.env.GROQ_API_KEY
+      ? "groq"
+      : process.env.XAI_API_KEY
+        ? "xai"
+        : "gemini"),
+
+  AI_MODEL:
+    process.env.AI_MODEL ||
+    process.env.GROQ_MODEL ||
+    process.env.XAI_MODEL ||
+    process.env.GEMINI_MODEL ||
+    "",
+
+  AI_MAX_RETRIES: Number(process.env.AI_MAX_RETRIES || 2),
+  AI_TIMEOUT_MS: Number(process.env.AI_TIMEOUT_MS || 30000),
+
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
-  GEMINI_MODEL:
-    process.env.GEMINI_MODEL || "gemini-2.5-flash",
+  GEMINI_MODEL: process.env.GEMINI_MODEL || "gemini-2.5-flash",
+
+  GROQ_API_KEY: process.env.GROQ_API_KEY || "",
+  GROQ_MODEL: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+  GROQ_BASE_URL:
+    process.env.GROQ_BASE_URL || "https://api.groq.com/openai/v1",
+
+  XAI_API_KEY: process.env.XAI_API_KEY || "",
+  XAI_MODEL: process.env.XAI_MODEL || "grok-2-latest",
+  XAI_BASE_URL: process.env.XAI_BASE_URL || "https://api.x.ai/v1",
 
   CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
   CLOUDINARY_API_KEY: process.env.CLOUDINARY_API_KEY || "",
@@ -72,9 +98,7 @@ if (!env.DATABASE_URL) {
 }
 
 if (!env.JWT_SECRET && !env.JWT_ACCESS_SECRET) {
-  throw new Error(
-    "JWT_SECRET or JWT_ACCESS_SECRET is missing in backend/.env"
-  );
+  throw new Error("JWT_SECRET or JWT_ACCESS_SECRET is missing in backend/.env");
 }
 
 if (!env.SESSION_SECRET) {
@@ -89,12 +113,26 @@ if (!env.REDIS_URL) {
   console.warn("REDIS_URL is missing. Realtime/cache/background features may not work.");
 }
 
-if (!env.RAZORPAY_KEY || !env.RAZORPAY_SECRET) {
+if (!env.RAZORPAY_KEY_ID || !env.RAZORPAY_KEY_SECRET) {
   console.warn("Razorpay keys are missing. Billing will not work.");
 }
 
+if (env.AI_PROVIDER === "gemini" && !env.GEMINI_API_KEY) {
+  console.warn("GEMINI_API_KEY is missing. Gemini AI features will not work.");
+}
+
+if (env.AI_PROVIDER === "groq" && !env.GROQ_API_KEY) {
+  console.warn("GROQ_API_KEY is missing. Groq AI features will not work.");
+}
+
+if (env.AI_PROVIDER === "xai" && !env.XAI_API_KEY) {
+  console.warn("XAI_API_KEY is missing. xAI/Grok AI features will not work.");
+}
+
 if (
-  (env.CLOUDINARY_CLOUD_NAME || env.CLOUDINARY_API_KEY || env.CLOUDINARY_API_SECRET) &&
+  (env.CLOUDINARY_CLOUD_NAME ||
+    env.CLOUDINARY_API_KEY ||
+    env.CLOUDINARY_API_SECRET) &&
   (!env.CLOUDINARY_CLOUD_NAME ||
     !env.CLOUDINARY_API_KEY ||
     !env.CLOUDINARY_API_SECRET)

@@ -1,10 +1,6 @@
 import env from "../config/env.js";
 
-export const verifyRecaptchaToken = async ({
-  token,
-  remoteIp,
-  expectedAction,
-}) => {
+export const verifyRecaptchaToken = async ({ token, remoteIp }) => {
   if (!env.RECAPTCHA_SECRET_KEY) {
     const error = new Error("reCAPTCHA secret key is not configured");
     error.statusCode = 500;
@@ -12,7 +8,7 @@ export const verifyRecaptchaToken = async ({
   }
 
   if (!token) {
-    const error = new Error("reCAPTCHA token is required");
+    const error = new Error("Please complete the reCAPTCHA");
     error.statusCode = 400;
     throw error;
   }
@@ -41,18 +37,7 @@ export const verifyRecaptchaToken = async ({
   if (!data.success) {
     const error = new Error("reCAPTCHA verification failed");
     error.statusCode = 400;
-    throw error;
-  }
-
-  if (expectedAction && data.action && data.action !== expectedAction) {
-    const error = new Error("Invalid reCAPTCHA action");
-    error.statusCode = 400;
-    throw error;
-  }
-
-  if (typeof data.score === "number" && data.score < env.RECAPTCHA_MIN_SCORE) {
-    const error = new Error("reCAPTCHA score too low");
-    error.statusCode = 400;
+    error.details = data["error-codes"] || [];
     throw error;
   }
 
