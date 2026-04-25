@@ -100,23 +100,19 @@ const avatarSrc =
     });
   }, [user]);
 
-  if (role === "ADMIN") {
-    return <Navigate to="/admin-dashboard" replace />;
-  }
-
-  if (role === "CREATOR") {
-    return <Navigate to="/creator-dashboard" replace />;
-  }
 
   const memberSince = user?.createdAt
     ? format(new Date(user.createdAt), "dd MMM yyyy")
     : "Recently joined";
 
-  const recentSubmissions: SubmissionItem[] =
+ const recentSubmissions = useMemo<SubmissionItem[]>(() => {
+  return (
     dashboard?.recentActivity ||
     analytics?.recentSubmissions ||
     analytics?.recent ||
-    [];
+    []
+  );
+}, [dashboard?.recentActivity, analytics?.recentSubmissions, analytics?.recent]);
 
   const acceptedCount =
     analytics?.totals?.accepted ??
@@ -177,6 +173,17 @@ const totalTarget = easyTotal + mediumTotal + hardTotal;
       time: firstRecent.createdAt || null,
     };
   }, [recentSubmissions]);
+
+
+      if (role === "ADMIN") {
+    return <Navigate to="/admin-dashboard" replace />;
+  }
+
+  if (role === "CREATOR") {
+    return <Navigate to="/creator-dashboard" replace />;
+  }
+
+
 
   const recommendations: RecommendationItem[] =
     dashboard?.recommendations?.length

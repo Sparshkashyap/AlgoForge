@@ -5,40 +5,24 @@ export const signupUserApi = async (payload: {
   email: string;
   password: string;
 }) => {
-  try {
-    const res = await API.post("/auth/signup", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/auth/signup", payload);
+  return res.data;
 };
 
 export const loginUserApi = async (payload: {
   email: string;
   password: string;
 }) => {
-  try {
-    const res = await API.post("/auth/login", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/auth/login", payload);
+  return res.data;
 };
 
 export const getMeApi = async () => {
-  try {
-    const res = await API.get("/auth/me");
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.get("/auth/me");
+  return res.data;
 };
 
 export const logoutUserApi = async () => {
-  try {
-    const res = await API.post("/auth/logout");
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/auth/logout");
+  return res.data;
 };

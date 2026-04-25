@@ -5,12 +5,8 @@ export const getAiHintApi = async (payload: {
   description: string;
   code: string;
 }) => {
-  try {
-    const res = await API.post("/ai/hint", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/ai/hint", payload);
+  return res.data;
 };
 
 export const reviewCodeApi = async (payload: {
@@ -19,12 +15,8 @@ export const reviewCodeApi = async (payload: {
   code: string;
   language: string;
 }) => {
-  try {
-    const res = await API.post("/ai/review", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/ai/review", payload);
+  return res.data;
 };
 
 export const generateProblemCodePackApi = async (payload: {
@@ -34,12 +26,8 @@ export const generateProblemCodePackApi = async (payload: {
   referenceLanguage: string;
   referenceCode: string;
 }) => {
-  try {
-    const res = await API.post("/ai/problem-code-pack", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/ai/problem-code-pack", payload);
+  return res.data;
 };
 
 export const getAiRoadmapSuggestionsApi = async (payload: {
@@ -47,10 +35,6 @@ export const getAiRoadmapSuggestionsApi = async (payload: {
   currentLevel?: string;
   topics?: string[];
 }) => {
-  try {
-    const res = await API.post("/ai/roadmap-suggestions", payload);
-    return res.data;
-  } catch (error: any) {
-    throw error;
-  }
+  const res = await API.post("/ai/roadmap-suggestions", payload);
+  return res.data;
 };

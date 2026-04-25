@@ -1,8 +1,14 @@
 import type { Config } from "tailwindcss";
+import tailwindcssAnimate from "tailwindcss-animate";
 
 export default {
   darkMode: ["class"],
-  content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+  ],
   prefix: "",
   theme: {
     container: {
@@ -14,8 +20,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Space Grotesk', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        heading: ["Space Grotesk", "sans-serif"],
+        body: ["Inter", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -97,8 +103,12 @@ export default {
           "100%": { transform: "scale(1)", opacity: "1" },
         },
         "pulse-glow": {
-          "0%, 100%": { boxShadow: "0 0 20px -5px hsl(var(--glow-primary) / 0.3)" },
-          "50%": { boxShadow: "0 0 30px -5px hsl(var(--glow-primary) / 0.5)" },
+          "0%, 100%": {
+            boxShadow: "0 0 20px -5px hsl(var(--glow-primary) / 0.3)",
+          },
+          "50%": {
+            boxShadow: "0 0 30px -5px hsl(var(--glow-primary) / 0.5)",
+          },
         },
         float: {
           "0%, 100%": { transform: "translateY(0)" },
@@ -116,5 +126,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [tailwindcssAnimate],
 } satisfies Config;
