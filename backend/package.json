@@ -11,6 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:validate": "prisma validate",
+    "postinstall": "prisma generate",
+
 "prisma:migrate:deploy": "prisma migrate deploy",
 "check": "npm run prisma:generate && npm run prisma:validate"
   },
