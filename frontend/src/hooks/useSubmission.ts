@@ -1,11 +1,22 @@
 import { useEffect, useRef, useState } from "react";
-import socket from "@/lib/socket";
+import getSocket from "@/lib/socket";
 import { getSubmissionByIdApi } from "@/api/submission.api";
 import type { Submission } from "@/types/submission.types";
 
 const isFinalStatus = (status?: string | null) => {
   const value = String(status || "").toUpperCase();
   return ["COMPLETED", "FAILED"].includes(value);
+};
+
+const normalizeSubmission = (response: any): Submission | null => {
+  const item = response?.data?.data ?? response?.data ?? response;
+
+  if (!item || !item.id) return null;
+
+  return {
+    ...item,
+    results: item.results || [],
+  };
 };
 
 export const useSubmission = (submissionId?: string | null) => {
@@ -20,29 +31,32 @@ export const useSubmission = (submissionId?: string | null) => {
     }
 
     let mounted = true;
+    const socket = getSocket();
 
     const fetchSubmission = async () => {
       try {
-        if (!mounted) return;
         const response = await getSubmissionByIdApi(submissionId);
+        const nextSubmission = normalizeSubmission(response);
 
-        if (!mounted) return;
-        setSubmission(response.data);
+        console.log("POLL SUBMISSION:", nextSubmission);
 
-        if (isFinalStatus(response.data?.status) && pollingRef.current) {
+        if (!mounted || !nextSubmission) return;
+
+        setSubmission(nextSubmission);
+
+        if (isFinalStatus(nextSubmission.status) && pollingRef.current) {
           window.clearInterval(pollingRef.current);
           pollingRef.current = null;
         }
-      } catch {
-        // noop
+      } catch (error) {
+        console.error("Failed to poll submission:", error);
       }
     };
 
     setLoading(true);
+
     void fetchSubmission().finally(() => {
-      if (mounted) {
-        setLoading(false);
-      }
+      if (mounted) setLoading(false);
     });
 
     pollingRef.current = window.setInterval(() => {
@@ -52,9 +66,16 @@ export const useSubmission = (submissionId?: string | null) => {
     const handleSubmissionUpdate = (incoming: Submission) => {
       if (incoming?.id !== submissionId) return;
 
-      setSubmission(incoming);
+      const nextSubmission = {
+        ...incoming,
+        results: incoming.results || [],
+      };
 
-      if (isFinalStatus(incoming?.status) && pollingRef.current) {
+      console.log("SOCKET SUBMISSION:", nextSubmission);
+
+      setSubmission(nextSubmission);
+
+      if (isFinalStatus(nextSubmission.status) && pollingRef.current) {
         window.clearInterval(pollingRef.current);
         pollingRef.current = null;
       }

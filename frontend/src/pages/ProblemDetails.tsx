@@ -253,7 +253,7 @@ const [customExpectedOutput, setCustomExpectedOutput] = useState("");
   useEffect(() => {
     if (!liveSubmission) return;
 
-    setSubmission(liveSubmission);
+   setSubmission(liveSubmission);
 
     if (isFinalSubmissionState(liveSubmission)) {
       setSubmitting(false);
@@ -279,8 +279,7 @@ const [customExpectedOutput, setCustomExpectedOutput] = useState("");
     }
   }, [liveSubmission, slug]);
 
-
-    const handleRun = async () => {
+const handleRun = async () => {
   if (!problem) return;
 
   if (blockedPremium) {
@@ -291,22 +290,16 @@ const [customExpectedOutput, setCustomExpectedOutput] = useState("");
   try {
     setRunning(true);
 
-    const visibleCase =
-      problem.testCases?.find((tc) => !tc.isHidden) || problem.testCases?.[0];
+    const hasCustomInput = customInput.trim().length > 0;
 
     const res = await runProblemApi(problem.id, {
       language,
       code: currentCode,
-      input:
-        customInput.trim() ||
-        visibleCase?.input ||
-        problem.sampleInput ||
-        "",
-      expectedOutput:
-        customExpectedOutput.trim() ||
-        visibleCase?.expected ||
-        problem.sampleOutput ||
-        "",
+
+      ...(hasCustomInput && {
+        customInput: customInput.trim(),
+        expectedOutput: customExpectedOutput.trim(),
+      }),
     });
 
     const result = res.data?.data ?? res.data;
@@ -359,7 +352,7 @@ const [customExpectedOutput, setCustomExpectedOutput] = useState("");
         code: currentCode,
       });
 
-      setSubmission(data.data);
+     setSubmission(data.data);
       setQueuedSubmissionId(data.data?.id || null);
 
       const queuedStatus = String(data.data?.status || "").toUpperCase();

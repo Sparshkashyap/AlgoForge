@@ -104,7 +104,7 @@ const isPaidUser =
       ].join(" ")}
     >
       <div className="container flex h-[70px] items-center justify-between">
-        <Link to="/" className="shrink-0">
+        <Link to="/" className="shrink-0" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
           <BrandLogo />
         </Link>
 

@@ -18,7 +18,7 @@ type HeatmapData = {
   cells: HeatmapCell[];
 };
 
-const dayLabels = ["Sun", "", "Tue", "", "Thu", "", ""];
+const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 const rangeOptions = [90, 180, 365];
 
@@ -95,8 +95,8 @@ export default function SolveHeatmap() {
   }, [data]);
 
   const monthMarkers = useMemo(() => {
-  return getMonthMarkers(weeks);
-}, [weeks]);
+    return getMonthMarkers(weeks);
+  }, [weeks]);
 
   return (
     <div className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-card/80 p-5 shadow-[0_24px_70px_rgba(0,0,0,0.12)] backdrop-blur-xl">
@@ -149,110 +149,124 @@ export default function SolveHeatmap() {
               <div className="rounded-2xl border border-border/70 bg-background/60 p-4 transition hover:border-emerald-500/30 hover:bg-emerald-500/5">
                 <div className="flex items-center justify-between">
                   <CalendarDays className="h-4 w-4 text-emerald-500" />
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="text-xs sm:text-sm uppercase tracking-[0.18em] text-muted-foreground">
                     Active
                   </span>
                 </div>
                 <p className="mt-3 text-3xl font-black">
                   {data.summary.totalSolvedDays}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Solved Days</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Solved Days
+                </p>
               </div>
 
               <div className="rounded-2xl border border-border/70 bg-background/60 p-4 transition hover:border-emerald-500/30 hover:bg-emerald-500/5">
                 <div className="flex items-center justify-between">
                   <Flame className="h-4 w-4 text-emerald-500" />
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="text-xs sm:text-sm uppercase tracking-[0.18em] text-muted-foreground">
                     Peak
                   </span>
                 </div>
                 <p className="mt-3 text-3xl font-black">
                   {data.summary.maxSolvedInDay}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Max In A Day</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Max In A Day
+                </p>
               </div>
 
               <div className="rounded-2xl border border-border/70 bg-background/60 p-4 transition hover:border-emerald-500/30 hover:bg-emerald-500/5">
                 <div className="flex items-center justify-between">
                   <Trophy className="h-4 w-4 text-emerald-500" />
-                  <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                  <span className="text-xs sm:text-sm uppercase tracking-[0.18em] text-muted-foreground">
                     Total
                   </span>
                 </div>
                 <p className="mt-3 text-3xl font-black">
                   {data.summary.totalSolvedProblems}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">Total Solved</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Total Solved
+                </p>
               </div>
             </div>
 
-            <div className="mt-6 overflow-x-auto rounded-[1.4rem] border border-border/70 bg-background/45 p-4">
-              <div className="min-w-[880px]">
-              <div className="relative mb-7 h-4 pl-10 text-xs text-muted-foreground">
-  {monthMarkers.map((marker) => (
+           <div className="mt-6 rounded-[1.4rem] border border-border/70 bg-background/45 p-4">
+  <div className="w-full overflow-x-auto pb-2">
     <div
-      key={`${marker.label}-${marker.index}`}
-      className="absolute"
-      style={{
-        left: `${40 + marker.index * 24}px`,
-      }}
+      className="inline-block w-fit"
     >
-      {marker.label}
+      <div
+        className="relative mb-3 h-5 text-xs text-muted-foreground"
+        style={{ marginLeft: 36 }}
+      >
+        {monthMarkers.map((marker) => (
+          <span
+            key={`${marker.label}-${marker.index}`}
+            className="absolute whitespace-nowrap"
+            style={{
+              left: marker.index * 26,
+            }}
+          >
+            {marker.label}
+          </span>
+        ))}
+      </div>
+
+      <div className="flex gap-2">
+        <div className="grid grid-rows-7 gap-1.5 sm:gap-2 pt-[1px] text-xs sm:text-sm text-muted-foreground">
+          {dayLabels.map((label, idx) => (
+            <div
+              key={`${label}-${idx}`}
+             className="flex h-5 w-10 items-center justify-start pl-1 text-xs sm:text-sm"
+            >
+              {label}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex gap-1.5 sm:gap-2">
+          {weeks.map((week, weekIndex) => (
+            <div key={weekIndex} className="grid grid-rows-7 gap-1.5 sm:gap-2">
+              {week.map((cell, cellIndex) => {
+                if (!cell.date) {
+                  return (
+                    <div
+                      key={`${weekIndex}-${cellIndex}`}
+                      className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-transparent"
+                    />
+                  );
+                }
+
+                return (
+                  <div
+                    key={cell.date}
+                    className={`h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] transition hover:scale-125 hover:ring-2 hover:ring-emerald-400/40 ${getLevelClass(
+                      cell.level
+                    )}`}
+                    title={`${cell.date}: ${cell.solvedCount} solved`}
+                  />
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+        <span>Less</span>
+        <span className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-muted/40" />
+        <span className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-emerald-200 dark:bg-emerald-950" />
+        <span className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-emerald-400 dark:bg-emerald-800" />
+        <span className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-emerald-500 dark:bg-emerald-600" />
+        <span className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6 rounded-[3px] bg-emerald-700 dark:bg-emerald-400" />
+        <span>More</span>
+      </div>
     </div>
-  ))}
+  </div>
 </div>
 
-                <div className="flex gap-2">
-                  <div className="grid grid-rows-7 gap-2 pt-1 text-[10px] text-muted-foreground">
-                    {dayLabels.map((label, idx) => (
-                      <div
-                        key={`${label}-${idx}`}
-                        className="flex h-4 items-center justify-end pr-1"
-                      >
-                        {label}
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="flex gap-2">
-                    {weeks.map((week, weekIndex) => (
-                      <div key={weekIndex} className="grid grid-rows-7 gap-2">
-                        {week.map((cell, cellIndex) => {
-                          if (!cell.date) {
-                            return (
-                              <div
-                                key={`${weekIndex}-${cellIndex}`}
-                                className="h-4 w-4 rounded-md bg-transparent"
-                              />
-                            );
-                          }
-
-                          return (
-                            <div
-                              key={cell.date}
-                              className={`h-4 w-4 rounded-md transition duration-200 hover:scale-125 hover:ring-2 hover:ring-emerald-400/40 ${getLevelClass(
-                                cell.level
-                              )}`}
-                              title={`${cell.date}: ${cell.solvedCount} solved`}
-                            />
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="mt-4 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <span>Less</span>
-                  <span className="h-4 w-4 rounded-md bg-muted/40" />
-                  <span className="h-4 w-4 rounded-md bg-emerald-200 dark:bg-emerald-950" />
-                  <span className="h-4 w-4 rounded-md bg-emerald-400 dark:bg-emerald-800" />
-                  <span className="h-4 w-4 rounded-md bg-emerald-500 dark:bg-emerald-600" />
-                  <span className="h-4 w-4 rounded-md bg-emerald-700 dark:bg-emerald-400" />
-                  <span>More</span>
-                </div>
-              </div>
-            </div>
           </>
         )}
       </div>

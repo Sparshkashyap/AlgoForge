@@ -51,6 +51,7 @@ import Roadmap from "@/pages/Roadmap";
 
 import RouteLoader from "@/components/RouteLoader";
 
+import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ function AppShell() {
     <TooltipProvider>
       <BrowserRouter>
         <SplashScreen show={showSplash} />
+        <ScrollToTop />
 
 
 
