@@ -166,6 +166,7 @@ export default function SubmissionResult({
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        
         <ResultBlock
           title="Passed"
           value={passedValue}
@@ -187,6 +188,67 @@ export default function SubmissionResult({
           icon={<FileCode2 className="h-4 w-4 text-primary" />}
         />
       </div>
+      
+      {Array.isArray(result.results) && result.results.length > 0 ? (
+  <div className="mt-5 space-y-3">
+    <h4 className="text-sm font-bold">Test Case Results</h4>
+
+    {result.results.map((tc, index) => {
+      const status = tc.verdict || tc.status || "Unknown";
+      const passed = status === "Accepted";
+
+      return (
+        <div
+          key={index}
+          className={`rounded-[1.2rem] border p-4 text-sm ${
+            passed
+              ? "border-emerald-500/20 bg-emerald-500/10"
+              : "border-rose-500/20 bg-rose-500/10"
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <p className="font-semibold">Test Case {index + 1}</p>
+            <span
+              className={
+                passed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"
+              }
+            >
+              {status}
+            </span>
+          </div>
+
+          <div className="grid gap-3 md:grid-cols-3">
+            <OutputSection title="Input" value={tc.input || "-"} />
+            <OutputSection title="Expected" value={tc.expected || "-"} />
+            <OutputSection
+              title="Actual"
+              value={tc.actual || tc.stdout || "-"}
+              danger={!passed}
+            />
+          </div>
+
+          {tc.stderr ? (
+            <div className="mt-3">
+              <OutputSection title="Stderr" value={tc.stderr} danger />
+            </div>
+          ) : null}
+
+          {tc.compileOutput ? (
+            <div className="mt-3">
+              <OutputSection
+                title="Compile Output"
+                value={tc.compileOutput}
+                danger
+              />
+            </div>
+          ) : null}
+        </div>
+      );
+    })}
+  </div>
+) : null}
+
+      
 
       <div className="mt-5 space-y-4">
         {result.stdout ? <OutputSection title="Stdout" value={result.stdout} /> : null}

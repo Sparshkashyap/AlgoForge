@@ -7,6 +7,7 @@ import {
   LayoutDashboard,
   PlusCircle,
   Trophy,
+  ListChecks,
   Crown,Eye,Settings,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -53,6 +54,7 @@ const isPaidUser =
       return [
         { label: "Problems", to: "/problems" },
         { label: "Contests", to: "/contests" },
+        { label: "Manage Problems", to: "/manage-problems" },
         { label: "Manage Contests", to: "/manage-contests" },
         { label: "Admin", to: "/admin-dashboard" },
       ];
@@ -272,6 +274,15 @@ const isPaidUser =
                         >
                           <Trophy className="h-4 w-4" />
                           Manage Contests
+                        </Link>
+
+                        <Link
+                          to="/manage-problems"
+                          onClick={() => setOpen(false)}
+                          className="inline-flex items-center gap-2"
+                        >
+                          <ListChecks className="h-4 w-4" />
+                          Manage Problems
                         </Link>
                       </>
                     )}

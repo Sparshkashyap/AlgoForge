@@ -3,6 +3,7 @@ import {
   createProblemController,
   deleteProblemController,
   getProblemByIdForAdminController,
+  getProblemByIdForManageController,
   getProblemBySlugController,
   listAdminProblemsController,
   listProblemsController,
@@ -18,6 +19,7 @@ import {
   createProblemSchema,
   previewProblemRunSchema,
 } from "../validations/problem.validation.js";
+
 
 const router = express.Router();
 
@@ -80,5 +82,14 @@ router.delete(
 
 // dynamic slug route always last
 router.get("/:slug", getProblemBySlugController);
+
+
+router.get(
+  "/manage/:problemId",
+  authMiddleware,
+  creatorOrAdminMiddleware,
+  getProblemByIdForManageController
+);
+
 
 export default router;

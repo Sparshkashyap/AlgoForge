@@ -279,47 +279,61 @@ const [customExpectedOutput, setCustomExpectedOutput] = useState("");
     }
   }, [liveSubmission, slug]);
 
-  const handleRun = async () => {
-    if (!problem) return;
 
-    if (blockedPremium) {
-      toast.error("Upgrade to Pro to run this problem");
-      return;
-    }
+    const handleRun = async () => {
+  if (!problem) return;
 
-    try {
-      setRunning(true);
+  if (blockedPremium) {
+    toast.error("Upgrade to Pro to run this problem");
+    return;
+  }
 
-      const visibleCase =
-        problem.testCases?.find((tc) => !tc.isHidden) || problem.testCases?.[0];
+  try {
+    setRunning(true);
 
-      const data = await runProblemApi(problem.id, {
-        language,
-        code: currentCode,
-        input: visibleCase?.input || problem.sampleInput || "",
-        expectedOutput: visibleCase?.expected || problem.sampleOutput || "",
-      });
+    const visibleCase =
+      problem.testCases?.find((tc) => !tc.isHidden) || problem.testCases?.[0];
 
-      setRunResult({
-        language,
-        status: data.data.verdict || data.data.statusDescription || "Completed",
-        verdict: data.data.verdict,
-        stdout: data.data.stdout,
-        stderr: data.data.stderr || data.data.message,
-        compileOutput: data.data.compileOutput,
-        runtime: data.data.runtime,
-        memory: data.data.memory,
-        passedCount: data.data.passedCount,
-        totalCount: data.data.totalCount,
-      } as Submission);
+    const res = await runProblemApi(problem.id, {
+      language,
+      code: currentCode,
+      input:
+        customInput.trim() ||
+        visibleCase?.input ||
+        problem.sampleInput ||
+        "",
+      expectedOutput:
+        customExpectedOutput.trim() ||
+        visibleCase?.expected ||
+        problem.sampleOutput ||
+        "",
+    });
 
-      toast.success(`Run: ${data.data.verdict || data.data.statusDescription}`);
-    } catch (error: any) {
-      toast.error(error?.response?.data?.message || "Run failed");
-    } finally {
-      setRunning(false);
-    }
-  };
+    const result = res.data?.data ?? res.data;
+
+    setRunResult({
+      language,
+      status: result.verdict || result.status || "Completed",
+      verdict: result.verdict || result.status,
+      stdout: result.stdout,
+      stderr: result.stderr || result.message,
+      compileOutput: result.compileOutput,
+      runtime: result.runtime,
+      memory: result.memory,
+      passedCount: result.passedCount,
+      totalCount: result.totalCount,
+      results: result.results || [],
+    } as Submission);
+
+    toast.success(`Run: ${result.verdict || result.status || "Completed"}`);
+  } catch (error: any) {
+    toast.error(error?.response?.data?.message || "Run failed");
+  } finally {
+    setRunning(false);
+  }
+};
+
+
 
   const handleSubmit = async () => {
     if (!problem) return;

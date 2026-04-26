@@ -4,6 +4,14 @@ import { judgeSubmission } from "./judge.service.js";
 import { buildExecutableCode } from "../utils/codeWrapper.js";
 import { notifyPublishedProblemService } from "./notification.service.js";
 
+const getRequester = (requester) => ({
+  id:
+    typeof requester === "string"
+      ? requester
+      : requester?.userId || requester?.id,
+  role: typeof requester === "object" ? requester?.role : null,
+});
+
 const buildProblemData = (payload, creatorUserId, slug) => ({
   title: payload.title.trim(),
   slug,
@@ -21,7 +29,7 @@ const buildProblemData = (payload, creatorUserId, slug) => ({
   referenceSolutions: payload.referenceSolutions,
   driverCode: payload.driverCode,
   reviewStatus: "DRAFT",
-isPublished: false,
+  isPublished: payload.isPublished === true,
   createdById: creatorUserId,
 });
 
@@ -80,7 +88,6 @@ export const createProblemService = async (payload, creatorUserId) => {
   let slug = baseSlug;
   let counter = 1;
 
-  // 🔥 AUTO UNIQUE SLUG GENERATION
   while (true) {
     const existing = await prisma.problem.findUnique({
       where: { slug },
@@ -93,25 +100,7 @@ export const createProblemService = async (payload, creatorUserId) => {
 
   const problem = await prisma.problem.create({
     data: {
-      title: payload.title.trim(),
-      slug,
-      description: payload.description.trim(),
-      difficulty: payload.difficulty,
-      tags: payload.tags,
-      constraints: payload.constraints || null,
-      isPremium: payload.isPremium ?? false,
-      boilerplateMode: payload.boilerplateMode ?? "provided",
-      starterCode: payload.starterCode,
-      sampleInput: payload.sampleInput,
-      sampleOutput: payload.sampleOutput,
-      explanation: payload.explanation,
-      languageTemplates: payload.languageTemplates,
-      referenceSolutions: payload.referenceSolutions,
-      driverCode: payload.driverCode,
-      reviewStatus: "DRAFT",
-isPublished: false,
-
-      createdById: creatorUserId,
+      ...buildProblemData(payload, creatorUserId, slug),
 
       testCases: {
         create: payload.testCases.map((tc) => ({
@@ -145,7 +134,9 @@ isPublished: false,
   return problem;
 };
 
-export const updateProblemService = async (problemId, payload, creatorUserId) => {
+export const updateProblemService = async (problemId, payload, requester) => {
+  const { id: requesterUserId, role: requesterRole } = getRequester(requester);
+
   const existing = await prisma.problem.findUnique({
     where: { id: problemId },
     select: {
@@ -163,13 +154,8 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
     throw error;
   }
 
-  const actor = await prisma.user.findUnique({
-    where: { id: creatorUserId },
-    select: { id: true, role: true },
-  });
-
   const canEdit =
-    actor?.role === "ADMIN" || existing.createdById === creatorUserId;
+    requesterRole === "ADMIN" || existing.createdById === requesterUserId;
 
   if (!canEdit) {
     const error = new Error("You are not allowed to update this problem");
@@ -190,6 +176,7 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
     where: { id: problemId },
     data: {
       ...buildProblemData(payload, existing.createdById, slug),
+
       testCases: {
         create: payload.testCases.map((tc) => ({
           input: tc.input,
@@ -222,7 +209,9 @@ export const updateProblemService = async (problemId, payload, creatorUserId) =>
   return updated;
 };
 
-export const deleteProblemService = async (problemId, requesterUserId) => {
+export const deleteProblemService = async (problemId, requester) => {
+  const { id: requesterUserId, role: requesterRole } = getRequester(requester);
+
   const existing = await prisma.problem.findUnique({
     where: { id: problemId },
     select: {
@@ -237,13 +226,8 @@ export const deleteProblemService = async (problemId, requesterUserId) => {
     throw error;
   }
 
-  const actor = await prisma.user.findUnique({
-    where: { id: requesterUserId },
-    select: { id: true, role: true },
-  });
-
   const canDelete =
-    actor?.role === "ADMIN" || existing.createdById === requesterUserId;
+    requesterRole === "ADMIN" || existing.createdById === requesterUserId;
 
   if (!canDelete) {
     const error = new Error("You are not allowed to delete this problem");
@@ -264,7 +248,24 @@ export const deleteProblemService = async (problemId, requesterUserId) => {
 export const listMyCreatedProblemsService = async (userId) => {
   return prisma.problem.findMany({
     where: { createdById: userId },
-    orderBy: { createdAt: "desc" },
+    include: {
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+      _count: {
+        select: {
+          submissions: true,
+          testCases: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
   });
 };
 
@@ -286,7 +287,6 @@ export const previewProblemRunService = async ({
     testCases,
   });
 };
-
 
 export const getProblemByIdForAdminService = async (problemId) => {
   const problem = await prisma.problem.findUnique({
@@ -333,4 +333,42 @@ export const listAdminProblemsService = async () => {
       createdAt: "desc",
     },
   });
+};
+
+export const getProblemByIdForManageService = async (
+  problemId,
+  requester
+) => {
+  const { id: requesterUserId, role: requesterRole } = getRequester(requester);
+
+  const problem = await prisma.problem.findUnique({
+    where: { id: problemId },
+    include: {
+      testCases: true,
+      createdBy: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  if (!problem) {
+    const error = new Error("Problem not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  const canManage =
+    requesterRole === "ADMIN" || problem.createdById === requesterUserId;
+
+  if (!canManage) {
+    const error = new Error("You are not allowed to access this problem");
+    error.statusCode = 403;
+    throw error;
+  }
+
+  return problem;
 };

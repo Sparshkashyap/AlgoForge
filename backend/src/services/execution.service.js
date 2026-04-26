@@ -64,7 +64,15 @@ export const executeJudge0Service = async ({
       url: error.config?.url,
     });
 
-    throw error;
+    const judgeError = new Error(
+      error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Judge0 execution failed"
+    );
+
+    judgeError.statusCode = error.response?.status || 500;
+    throw judgeError;
   }
 };
 
@@ -76,6 +84,8 @@ export const runProblemCodeService = async ({
   customInput,
   expectedOutput,
 }) => {
+  const normalizedLanguage = String(language || "").toLowerCase();
+
   const hasCustomInput =
     typeof customInput === "string" && customInput.trim().length > 0;
 
@@ -88,8 +98,8 @@ export const runProblemCodeService = async ({
         },
       ]
     : Array.isArray(testCases)
-    ? testCases
-    : [];
+      ? testCases
+      : [];
 
   if (!hasCustomInput && casesToRun.length === 0) {
     const error = new Error("At least one test case is required");
@@ -97,14 +107,19 @@ export const runProblemCodeService = async ({
     throw error;
   }
 
- const executableCode =
-  language?.toLowerCase() === "java" && code.includes("public static void main")
-    ? code
-    : buildExecutableCode({
-        language,
-        userCode: code,
-        driverCode: driverCode?.[language] ?? "",
-      });
+  const selectedDriverCode =
+    typeof driverCode === "string"
+      ? driverCode
+      : driverCode?.[normalizedLanguage] ?? "";
+
+  const executableCode =
+    normalizedLanguage === "java" && String(code || "").includes("public static void main")
+      ? code
+      : buildExecutableCode({
+          language: normalizedLanguage,
+          userCode: code,
+          driverCode: selectedDriverCode,
+        });
 
   console.log("FINAL SOURCE SENT TO JUDGE0:\n", executableCode);
 
@@ -120,9 +135,9 @@ export const runProblemCodeService = async ({
 
   for (const testCase of casesToRun) {
     const result = await executeJudge0Service({
-      language,
+      language: normalizedLanguage,
       sourceCode: executableCode,
-      stdin: testCase.input,
+      stdin: testCase.input ?? "",
     });
 
     const stdout = result.stdout || "";
@@ -135,33 +150,32 @@ export const runProblemCodeService = async ({
     finalStderr = stderr;
     finalCompileOutput = compileOutput;
     runtime = result.time || null;
-    memory = result.memory || null;
+    memory = result.memory ? String(result.memory) : null;
 
     let caseVerdict = "Accepted";
 
     if (compileOutput) {
       caseVerdict = "Compilation Error";
-      finalVerdict = "Compilation Error";
     } else if (
-      result.stderr ||
-      result.message ||
+      stderr ||
       (result.status?.id && result.status.id >= 11 && result.status.id !== 3)
     ) {
       caseVerdict = "Runtime Error";
-      finalVerdict = "Runtime Error";
     } else if (!hasCustomInput && actual !== expected) {
       caseVerdict = "Wrong Answer";
-      finalVerdict = "Wrong Answer";
     } else if (hasCustomInput && expected && actual !== expected) {
       caseVerdict = "Wrong Answer";
-      finalVerdict = "Wrong Answer";
     } else {
       passedCount += 1;
     }
 
+    if (finalVerdict === "Accepted" && caseVerdict !== "Accepted") {
+      finalVerdict = caseVerdict;
+    }
+
     results.push({
-      input: testCase.input,
-      expected: testCase.expected,
+      input: testCase.input ?? "",
+      expected: testCase.expected ?? "",
       actual,
       stdout,
       stderr,
@@ -169,13 +183,9 @@ export const runProblemCodeService = async ({
       status: caseVerdict,
       verdict: caseVerdict,
       runtime: result.time || null,
-      memory: result.memory || null,
+      memory: result.memory ? String(result.memory) : null,
       isCustom: Boolean(testCase.isCustom),
     });
-
-    if (caseVerdict !== "Accepted") {
-      break;
-    }
   }
 
   return {

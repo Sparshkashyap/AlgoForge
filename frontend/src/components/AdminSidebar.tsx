@@ -7,6 +7,7 @@ import {
   Users,
   BadgeIndianRupee,
   ClipboardCheck,
+  ListChecks,
   FileSpreadsheet,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -14,6 +15,7 @@ import { useAuth } from "@/context/AuthContext";
 const links = [
   { label: "Admin Dashboard", href: "/admin-dashboard", icon: LayoutDashboard },
   { label: "Create Problem", href: "/create-problem", icon: PlusSquare },
+  { label: "Manage Problems", href: "/manage-problems", icon: ListChecks },
   { label: "Users", href: "/admin-users", icon: Users },
   { label: "Sales", href: "/admin-sales", icon: BadgeIndianRupee },
   { label: "Review Queue", href: "/admin-problem-review", icon: ClipboardCheck },

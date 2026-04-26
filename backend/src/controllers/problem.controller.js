@@ -2,6 +2,7 @@ import {
   createProblemService,
   deleteProblemService,
   getProblemByIdForAdminService,
+  getProblemByIdForManageService,
   getProblemBySlugService,
   listAdminProblemsService,
   listProblemsService,
@@ -61,7 +62,7 @@ export const updateProblemController = async (req, res, next) => {
     const problem = await updateProblemService(
       req.params.problemId,
       req.validated?.body ?? req.body,
-      req.user.userId
+      req.user
     );
 
     return res.status(200).json({
@@ -78,7 +79,7 @@ export const deleteProblemController = async (req, res, next) => {
   try {
     const result = await deleteProblemService(
       req.params.problemId,
-      req.user.userId
+      req.user
     );
 
     return res.status(200).json(result);
@@ -136,11 +137,33 @@ export const listAdminProblemsController = async (req, res, next) => {
 
 export const listMyProblemsController = async (req, res, next) => {
   try {
-    const problems = await listMyCreatedProblemsService(req.user.userId);
+    let problems;
+
+    if (req.user.role === "ADMIN") {
+      problems = await listAdminProblemsService();   // ✅ ALL problems
+    } else {
+      problems = await listMyCreatedProblemsService(req.user.userId); // creator only
+    }
 
     return res.status(200).json({
       success: true,
       data: problems,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getProblemByIdForManageController = async (req, res, next) => {
+  try {
+    const problem = await getProblemByIdForManageService(
+      req.params.problemId,
+      req.user
+    );
+
+    return res.status(200).json({
+      success: true,
+      data: problem,
     });
   } catch (error) {
     next(error);

@@ -63,7 +63,8 @@ export const generateProblemCodePackService = async ({
   referenceLanguage,
   referenceCode,
 }) => {
-  const prompt = `
+
+const prompt = `
 Return valid JSON only. No markdown. No explanation.
 
 Generate this exact JSON shape:
@@ -86,27 +87,21 @@ Generate this exact JSON shape:
     "javascript": "...",
     "python": "...",
     "cpp": "...",
-    "java": "",
+    "java": "...",
     "c": "..."
   }
 }
 
-Supported languages:
-javascript, python, cpp, java, c
-
-Rules:
-- languageTemplates = user-facing starter boilerplate only.
-- referenceSolutions = correct accepted solutions.
-- driverCode = hidden runner code that reads stdin and prints exact expected output.
-- For Java, template/reference should use:
-public class Main {
-    public static String solve(String input) {
-    }
-}
-- Java driverCode should be empty string.
-- Keep output deterministic.
+Critical rules:
+- Every driverCode string MUST contain the exact placeholder {{USER_CODE}}.
+- driverCode is hidden runner code. It reads stdin, injects user code at {{USER_CODE}}, calls the solution function/class, and prints exact output.
+- languageTemplates are user-facing starter code only.
+- referenceSolutions are correct accepted solutions only.
+- For Java, user code MUST use class Solution, never class Main.
+- For Java, driverCode MUST define public class Main with public static void main(String[] args).
+- For Java, driverCode MUST contain {{USER_CODE}} before public class Main.
+- Do not use public class Main in Java languageTemplates or referenceSolutions.
 - Do not include markdown fences.
-- Do not include comments outside code strings.
 - Escape newlines correctly inside JSON strings.
 
 Problem title:
@@ -150,19 +145,61 @@ export const generateHintService = async ({
   description,
   code,
 }) => {
-  const prompt = `
-You are a coding interview mentor.
-Give 3 short hints only.
-Do not give the full solution.
 
-Problem:
+ const prompt = `
+Return valid JSON only. No markdown. No explanation.
+
+Generate this exact JSON shape:
+{
+  "languageTemplates": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "referenceSolutions": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "driverCode": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  }
+}
+
+Critical rules:
+- Every driverCode string MUST contain the exact placeholder {{USER_CODE}}.
+- driverCode is hidden runner code. It reads stdin, injects user code at {{USER_CODE}}, calls the solution function/class, and prints exact output.
+- languageTemplates are user-facing starter code only.
+- referenceSolutions are correct accepted solutions only.
+- For Java, user code MUST use class Solution, never class Main.
+- For Java, driverCode MUST define public class Main with public static void main(String[] args).
+- For Java, driverCode MUST contain {{USER_CODE}} before public class Main.
+- Do not use public class Main in Java languageTemplates or referenceSolutions.
+- Do not include markdown fences.
+- Escape newlines correctly inside JSON strings.
+
+Problem title:
 ${title}
 
-Description:
+Problem description:
 ${description}
 
-User code:
-${code}
+Constraints:
+${constraints || ""}
+
+Reference language:
+${referenceLanguage}
+
+Reference solution:
+${referenceCode}
 `;
 
   const response = await generateAiText({
@@ -191,29 +228,62 @@ export const reviewCodeService = async ({
   code,
   language,
 }) => {
-  const prompt = `
-Return valid JSON only. No markdown.
 
-JSON shape:
+const prompt = `
+Return valid JSON only. No markdown. No explanation.
+
+Generate this exact JSON shape:
 {
-  "summary": "...",
-  "issues": ["..."],
-  "improvements": ["..."]
+  "languageTemplates": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "referenceSolutions": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  },
+  "driverCode": {
+    "javascript": "...",
+    "python": "...",
+    "cpp": "...",
+    "java": "...",
+    "c": "..."
+  }
 }
 
-Problem:
+Critical rules:
+- Every driverCode string MUST contain the exact placeholder {{USER_CODE}}.
+- driverCode is hidden runner code. It reads stdin, injects user code at {{USER_CODE}}, calls the solution function/class, and prints exact output.
+- languageTemplates are user-facing starter code only.
+- referenceSolutions are correct accepted solutions only.
+- For Java, user code MUST use class Solution, never class Main.
+- For Java, driverCode MUST define public class Main with public static void main(String[] args).
+- For Java, driverCode MUST contain {{USER_CODE}} before public class Main.
+- Do not use public class Main in Java languageTemplates or referenceSolutions.
+- Do not include markdown fences.
+- Escape newlines correctly inside JSON strings.
+
+Problem title:
 ${title}
 
-Description:
+Problem description:
 ${description}
 
-Language:
-${language}
+Constraints:
+${constraints || ""}
 
-Code:
-${code}
+Reference language:
+${referenceLanguage}
+
+Reference solution:
+${referenceCode}
 `;
-
   const response = await generateAiText({
     feature: "AI_REVIEW",
     temperature: 0.2,
@@ -221,6 +291,8 @@ ${code}
       "You are a senior coding reviewer. Return concise valid JSON only.",
     prompt,
   });
+
+  console.log("AI REVIEW RAW RESPONSE:", response.text);
 
   await saveAIUsage({
     userId,

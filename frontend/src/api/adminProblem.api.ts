@@ -53,8 +53,8 @@ export const getAdminProblemsApi = async () => {
   return response.data;
 };
 
-export const getAdminProblemByIdApi = async (problemId: string) => {
-  const response = await API.get(`/problems/admin/${problemId}`);
+export const getManageProblemByIdApi = async (problemId: string) => {
+  const response = await API.get(`/problems/manage/${problemId}`);
   return response.data;
 };
 
