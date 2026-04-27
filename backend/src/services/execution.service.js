@@ -20,7 +20,8 @@ export const executeJudge0Service = async ({
   sourceCode,
   stdin = "",
 }) => {
-  const languageId = LANGUAGE_MAP[language?.toLowerCase()];
+  const normalizedLanguage = String(language || "").toLowerCase();
+  const languageId = LANGUAGE_MAP[normalizedLanguage];
 
   if (!languageId) {
     const error = new Error("Unsupported language");
@@ -61,7 +62,6 @@ export const executeJudge0Service = async ({
     console.error("🔥 Judge0 error:", {
       status: error.response?.status,
       data: error.response?.data,
-      url: error.config?.url,
     });
 
     const judgeError = new Error(
@@ -98,8 +98,8 @@ export const runProblemCodeService = async ({
         },
       ]
     : Array.isArray(testCases)
-      ? testCases
-      : [];
+    ? testCases
+    : [];
 
   if (!hasCustomInput && casesToRun.length === 0) {
     const error = new Error("At least one test case is required");
@@ -112,14 +112,11 @@ export const runProblemCodeService = async ({
       ? driverCode
       : driverCode?.[normalizedLanguage] ?? "";
 
-  const executableCode =
-    normalizedLanguage === "java" && String(code || "").includes("public static void main")
-      ? code
-      : buildExecutableCode({
-          language: normalizedLanguage,
-          userCode: code,
-          driverCode: selectedDriverCode,
-        });
+  const executableCode = buildExecutableCode({
+    language: normalizedLanguage,
+    userCode: code,
+    driverCode: selectedDriverCode,
+  });
 
   console.log("FINAL SOURCE SENT TO JUDGE0:\n", executableCode);
 
@@ -143,6 +140,7 @@ export const runProblemCodeService = async ({
     const stdout = result.stdout || "";
     const stderr = result.stderr || result.message || "";
     const compileOutput = result.compile_output || "";
+
     const actual = normalizeOutput(stdout);
     const expected = normalizeOutput(testCase.expected);
 
@@ -154,6 +152,7 @@ export const runProblemCodeService = async ({
 
     let caseVerdict = "Accepted";
 
+    // 🔥 CORRECT VERDICT LOGIC
     if (compileOutput) {
       caseVerdict = "Compilation Error";
     } else if (
@@ -161,9 +160,7 @@ export const runProblemCodeService = async ({
       (result.status?.id && result.status.id >= 11 && result.status.id !== 3)
     ) {
       caseVerdict = "Runtime Error";
-    } else if (!hasCustomInput && actual !== expected) {
-      caseVerdict = "Wrong Answer";
-    } else if (hasCustomInput && expected && actual !== expected) {
+    } else if (actual !== expected) {
       caseVerdict = "Wrong Answer";
     } else {
       passedCount += 1;
@@ -180,8 +177,8 @@ export const runProblemCodeService = async ({
       stdout,
       stderr,
       compileOutput,
-      status: caseVerdict,
       verdict: caseVerdict,
+      status: caseVerdict,
       runtime: result.time || null,
       memory: result.memory ? String(result.memory) : null,
       isCustom: Boolean(testCase.isCustom),
