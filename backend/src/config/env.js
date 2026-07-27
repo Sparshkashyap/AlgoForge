@@ -20,7 +20,7 @@ const env = {
 
   REDIS_URL: process.env.REDIS_URL || "",
 
-  JUDGE0_API_URL: process.env.JUDGE0_API_URL || "",
+  JUDGE0_API_URL: process.env.JUDGE0_API_URL || "https://judge0-ce.p.rapidapi.com",
   JUDGE0_API_KEY: process.env.JUDGE0_API_KEY || "",
 
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || "",

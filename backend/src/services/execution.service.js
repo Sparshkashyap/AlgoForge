@@ -35,13 +35,11 @@ export const executeJudge0Service = async ({
     throw error;
   }
 
-  const headers = {
-    "Content-Type": "application/json",
-  };
-
-  if (env.JUDGE0_API_KEY) {
-    headers["X-RapidAPI-Key"] = env.JUDGE0_API_KEY;
-  }
+const headers = {
+  "Content-Type": "application/json",
+  "X-RapidAPI-Key": env.JUDGE0_API_KEY,
+  "X-RapidAPI-Host": env.JUDGE0_API_HOST,
+};
 
   try {
     const { data } = await axios.post(

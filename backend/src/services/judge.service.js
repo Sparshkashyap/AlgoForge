@@ -27,12 +27,8 @@ export const getLanguageId = (language) => {
 
 const getHeaders = () => ({
   "Content-Type": "application/json",
-  "ngrok-skip-browser-warning": "true",
-  ...(env.JUDGE0_API_KEY
-    ? {
-        "X-Auth-Token": env.JUDGE0_API_KEY,
-      }
-    : {}),
+  "X-RapidAPI-Key": env.JUDGE0_API_KEY,
+  "X-RapidAPI-Host": env.JUDGE0_API_HOST,
 });
 
 
